@@ -11,11 +11,13 @@ require "string"
 -- DKP_Manager Module Definition
 -----------------------------------------------------------------------------------------------
 local DKP_Manager = {} 
-isWinTime = false
+local isWinTime = false
+
 itemWeBetFor = "<TESTITEM>"
 local dkpUserSettings = {
 "itemBetTime",
 "isAllowWhisper",
+"isTwinkMode",
 "DKPChatChannelSay",
 "DKPChatChannelInstance",
 "DKPChatChannelGroup",
@@ -23,6 +25,7 @@ local dkpUserSettings = {
 "BnWChatChannelSay",
 "BnWChatChannelInstance",
 "BnWChatChannelGroup",
+"dkpKtId",
 "BnWChatChannelGuild"
 }
 
@@ -51,6 +54,7 @@ function DKP_Manager:new(o)
 	o.dkpItems = {}
 	o.betItem = {}
 	o.reasonItem = {}
+	o.tDKPKt = {}
 
     return o
 end
@@ -78,7 +82,8 @@ function DKP_Manager:OnLoad()
 	self.xmlDoc = XmlDoc.CreateFromFile("DKP_Manager.xml")
 	self.xmlDoc:RegisterCallback("OnDocLoaded", self)
 	
-				self:DefaultSettings()
+	self:DefaultSettings()
+	self:GetTwinkString()	
 end
 
 -----------------------------------------------------------------------------------------------
@@ -101,6 +106,11 @@ function DKP_Manager:OnDocLoaded()
 			Apollo.AddAddonErrorText(self, "Could not load the BetAndWin Window for some reason.")
 			return
 		end
+		self.wndDKPKtList = Apollo.LoadForm(self.xmlDoc, "DKP_Konten", nil, self)
+		if self.wndDKPKtList == nil then
+			Apollo.AddAddonErrorText(self, "Could not load the DKP Konto list")
+			return
+		end
 		
 		self.wndSettings = Apollo.LoadForm(self.xmlDoc, "DKP_Settings",nil,self)
 		self.wndSettingsList = Apollo.LoadForm(self.xmlDoc,"DKP_SettingsList", self.wndSettings:FindChild("SettingsList"),self)
@@ -111,10 +121,13 @@ function DKP_Manager:OnDocLoaded()
 		self.wndBetAndWinList = self.wndBetAndWin:FindChild("ItemList")
 		self.wndBetAndWinItemList = self.wndBetAndWin:FindChild("ItemListBnW")
 		self.wndReasonItemList = self.wndItems:FindChild("ReasonList")
+		self.wndDKPKtItemList = self.wndDKPKtList:FindChild("KontenList")
+		
 	    self.wndMain:Show(false, true)
 		self.wndItems:Show(false,true)
 		self.wndBetAndWin:Show(false,true)
 		self.wndSettings:Show(false,true)
+		self.wndDKPKtList:Show(false,true)
 
 		-- if the xmlDoc is no longer needed, you should set it to nil
 		-- self.xmlDoc = nil
@@ -126,6 +139,8 @@ function DKP_Manager:OnDocLoaded()
 		Apollo.RegisterSlashCommand("dkpm", "OnDKP_RemoveDKP",self)
 		Apollo.RegisterTimerHandler("OnSecTimer", "OnTimer", self)
 		Apollo.RegisterEventHandler("MasterLootUpdate",	"OnMasterLootUpdate", self)
+		
+		self:GetTwinkString()
 		
 
 
@@ -214,10 +229,13 @@ function DKP_Manager:OnRestore(eType, t)
 	multidkp_pools = t["multidkp_pools"]
 	itempools = t["itempools"]
 	dkpr = t["dkpr"]
+	self:GetTwinkString()
 end
 
 function DKP_Manager:DefaultSettings()
 	self.itemBetTime = 10;
+	self.dkpKtId = 1;
+	self.isTwinkMode = false;
 	self.DKPChatChannelSay = true;
 	self.DKPChatChannelInstance = false;
 	self.DKPChatChannelGroup = false;
@@ -237,12 +255,15 @@ function DKP_Manager:DefaultSettings()
 	multidkp_pools = {}
 	itempools = {}
 	dkpr = {}
+	self:GetTwinkString()
 	--tSave["DKP_ITEMS"] = DKP_ITEMS
 end
 
 function DKP_Manager:RefreshSettings()
 	if self.DKPChatChannelSay ~= nil then
+	self:GetTwinkString()
 	self.wndSettings:FindChild("btn_DKPSettings_ChatSay"):SetCheck(self.DKPChatChannelSay)
+	self.wndSettings:FindChild("btn_DKPSettings_EnableTwinkMode"):SetCheck(self.isTwinkMode)
 	self.wndSettings:FindChild("btn_DKPSettings_ChatInstance"):SetCheck(self.DKPChatChannelInstance)
 	self.wndSettings:FindChild("btn_DKPSettings_ChatGroup"):SetCheck(self.DKPChatChannelGroup)
 	self.wndSettings:FindChild("btn_DKPSettings_ChatGuild"):SetCheck(self.DKPChatChannelGuild)
@@ -255,6 +276,21 @@ function DKP_Manager:RefreshSettings()
 	self.wndSettings:FindChild("btn_BnWSettings_ChatGuild"):SetCheck(self.BnWChatChannelGuild)
 	end
 	
+end
+
+
+function DKP_Manager:GetTwinkString()
+	if self.isTwinkMode == true then
+		adjustmentModeString = "points_adjustment_with_twink"
+		pointsCurrentModeString = "points_current_with_twink"
+		pointsEarnedModeString = "points_earned_with_twink"
+		pointsSpendModeString = "points_spent_with_twink"
+	else
+		adjustmentModeString = "points_adjustment"
+		pointsCurrentModeString = "points_current"
+		pointsEarnedModeString = "points_earned"
+		pointsSpendModeString = "points_spent"
+	end
 end
 
 
@@ -358,17 +394,17 @@ function DKP_Manager:SearchDKPPlayers( wndHandler, wndControl, eMouseButton)
 	--if string.find( strMessage,"\dkp" ) then
 -- make sure the item list is empty to start with
 	self:DestroyItemList()
-	if (gdkp.players == nil) then return end 
-		for key,val in pairs(gdkp.players) do
-			if (DKP_ITEMS[key] ~= nil) then
+	if (players == nil) then return end 
+		for key,val in pairs(players) do
+		
 			strPlayerKey = key
 			
 				if string.find(string.lower(strPlayerKey), string.lower(searchtext:GetText())) then--strSearchText) then
-					self:AddItem(key,gdkp.players[key].class,gdkp.players[key].DKP)
+					self:AddItem(players[key].name,players[key].class_name,players[key].self.pointsCurrentModeString)
 				else
 				--print("shut the fuck up!")
 				end
-			end;
+			
 		end
 -- now all the item are added, call ArrangeChildrenVert to list out the list items vertically
 	self.wndItemList:ArrangeChildrenVert()
@@ -377,9 +413,18 @@ function DKP_Manager:SearchDKPPlayers( wndHandler, wndControl, eMouseButton)
 end
 
 
+function DKP_Manager:GetPlayerID(wichPlayer)
+		for key,val in pairs(players) do
+			if (players[key]["name"] == wichPlayer) then
+			return key
+			end
+		end
+end
+
+
 function DKP_Manager:searchChanged( wndHandler, wndControl, strText )
 	self:DestroyItemList()
-	if (gdkp.players == nil) then return end 
+	if (players == nil) then return end 
 
 		for key,val in pairs(gdkp.players) do
 			if (DKP_ITEMS[key] ~= nil) then
@@ -400,18 +445,31 @@ end
 function DKP_Manager:PopulateItemList()
 	-- make sure the item list is empty to start with
 		self:DestroyItemList()
-		if (gdkp == nil) then
+		if (players == nil) then
 			return
 		else 
-		for key,val in pairs(gdkp.players) do
-		if (DKP_ITEMS[key] ~= nil) then
-			self:AddItem(key,gdkp.players[key].class,gdkp.players[key].dkp_current)
-		end;
+		for key,val in pairs(players) do
+			self:AddItem(players[key].name,players[key].class_name,players[key]["points"][1][pointsCurrentModeString])
 		end
 	end;
 	-- now all the item are added, call ArrangeChildrenVert to list out the list items vertically
 	self.wndItemList:ArrangeChildrenVert()
 end
+
+function DKP_Manager:PopulateDKPKtList()
+	-- make sure the item list is empty to start with
+		self:DestroyDKPKtList()
+		if (multidkp_pools == nil) then
+			return
+		else 
+		for key,val in pairs(multidkp_pools) do
+			self:AddDKPKtItem(key,multidkp_pools[key].desc)
+		end
+	end;
+	-- now all the item are added, call ArrangeChildrenVert to list out the list items vertically
+	self.wndDKPKtList:ArrangeChildrenVert()
+end
+
 
 -- clear the item list
 function DKP_Manager:DestroyItemList()
@@ -421,6 +479,16 @@ function DKP_Manager:DestroyItemList()
 
 	-- clear the list item array
 	self.tItems = {}
+	self.wndSelectedListItem = nil
+end
+
+function DKP_Manager:DestroyDKPKtList()
+	for key,val in pairs(self.tDKPKt) do
+		self.tDKPKt[key]:Destroy()
+	end
+
+	-- clear the list item array
+	self.tDKPKt = {}
 	self.wndSelectedListItem = nil
 end
 
@@ -481,6 +549,21 @@ function DKP_Manager:AddItem(PlayerName,PlayerClass,PlayerDKP)
 	wndClassText:SetText(PlayerClass)
 	wndDKPText:SetText(PlayerDKP)
 	wnd:SetData(PlayerName)
+end
+
+function DKP_Manager:AddDKPKtItem(ktID,ktDesc)
+	-- load the window item for the list item
+	local wnd = Apollo.LoadForm(self.xmlDoc, "DKP_Konten_ListItem", self.wndItemList, self)
+	
+	
+	-- keep track of the window item created
+	self.tDKPKt[ktID] = wnd
+
+	-- give it a piece of data to refer to 
+	local id = wnd:FindChild("lbl_id")
+	local desc = wnd:FindChild("lbl_desc")
+	id:SetText(ktID)
+	desc:SetText(ktDesc)
 end
 
 -- add an item into the item list
@@ -833,6 +916,10 @@ function DKP_Manager:Button_EnableDKPWhisper( wndHandler, wndControl)
 self.isAllowWhisper = wndControl:IsChecked()
 end
 
+function DKP_Manager:Button_EnableTwinkMode( wndHandler, wndControl, eMouseButton )
+self.isTwinkMode = wndControl:IsChecked()
+end
+
 function DKP_Manager:Slider_DrawTimer( wndHandler, wndControl, fNewValue, fOldValue )
 firstmatch = false
 
@@ -847,6 +934,12 @@ end
 --548
 self.itemBetTime = tonumber(strDnewVal)
 self.wndSettings:FindChild("Label_DrawTimerDisplay"):SetText(strDnewVal .. "s")
+end
+
+
+
+function DKP_Manager:OnDKPKtToogle( wndHandler, wndControl, eMouseButton )
+self.wndDKPKtList:Show()
 end
 
 -----------------------------------------------------------------------------------------------
