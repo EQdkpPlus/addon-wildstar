@@ -13,7 +13,7 @@
 -- It can be used for any purpose so long as the copyright notice and
 -- web-page links above are maintained. Enjoy.
 --
-local VERSION = 20140418.11  -- version history at end of file
+local VERSIOON = 20140418.11  -- version history at end of file
 local OBJDEF = { VERSION = VERSION }
 
 
