@@ -1,7 +1,7 @@
 -- -*- coding: utf-8 -*-
 --
 -- Simple JSON encoding and decoding in pure Lua.
---
+--asdasd
 -- Copyright 2010-2013 Jeffrey Friedl
 -- http://regex.info/blog/
 --
