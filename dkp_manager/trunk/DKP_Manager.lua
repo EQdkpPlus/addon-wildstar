@@ -106,11 +106,8 @@ function DKP_Manager:OnDocLoaded()
 			Apollo.AddAddonErrorText(self, "Could not load the BetAndWin Window for some reason.")
 			return
 		end
-		self.wndDKPKtList = Apollo.LoadForm(self.xmlDoc, "DKP_Konten", nil, self)
-		if self.wndDKPKtList == nil then
-			Apollo.AddAddonErrorText(self, "Could not load the DKP Konto list")
-			return
-		end
+
+
 		
 		self.wndSettings = Apollo.LoadForm(self.xmlDoc, "DKP_Settings",nil,self)
 		self.wndSettingsList = Apollo.LoadForm(self.xmlDoc,"DKP_SettingsList", self.wndSettings:FindChild("SettingsList"),self)
@@ -121,13 +118,13 @@ function DKP_Manager:OnDocLoaded()
 		self.wndBetAndWinList = self.wndBetAndWin:FindChild("ItemList")
 		self.wndBetAndWinItemList = self.wndBetAndWin:FindChild("ItemListBnW")
 		self.wndReasonItemList = self.wndItems:FindChild("ReasonList")
-		self.wndDKPKtItemList = self.wndDKPKtList:FindChild("KontenList")
+		
 		
 	    self.wndMain:Show(false, true)
 		self.wndItems:Show(false,true)
 		self.wndBetAndWin:Show(false,true)
 		self.wndSettings:Show(false,true)
-		self.wndDKPKtList:Show(false,true)
+		--self.wndDKPKtList:Show(false,true)
 
 		-- if the xmlDoc is no longer needed, you should set it to nil
 		-- self.xmlDoc = nil
@@ -467,7 +464,7 @@ function DKP_Manager:PopulateDKPKtList()
 		end
 	end;
 	-- now all the item are added, call ArrangeChildrenVert to list out the list items vertically
-	self.wndDKPKtList:ArrangeChildrenVert()
+	self.wndDKPKtItemList:ArrangeChildrenVert()
 end
 
 
@@ -553,7 +550,7 @@ end
 
 function DKP_Manager:AddDKPKtItem(ktID,ktDesc)
 	-- load the window item for the list item
-	local wnd = Apollo.LoadForm(self.xmlDoc, "DKP_Konten_ListItem", self.wndItemList, self)
+	local wnd = Apollo.LoadForm(self.xmlDoc, "DKP_Konten_ListItem", self.wndDKPKtItemList, self)
 	
 	
 	-- keep track of the window item created
@@ -939,7 +936,48 @@ end
 
 
 function DKP_Manager:OnDKPKtToogle( wndHandler, wndControl, eMouseButton )
-self.wndDKPKtList:Show()
+if self.wndDKPKtList ~= nil then
+	self.wndDKPKtList:Destroy()
+
+end
+self.wndDKPKtList = Apollo.LoadForm(self.xmlDoc, "DKP_Konten", wndControl, self)
+self.wndDKPKtItemList = self.wndDKPKtList:FindChild("KontenList")
+self.wndDKPKtList:SetData(wndControl)
+self.wndDKPKtList:SetAnchorPoints(0,1,1,0)
+self.wndDKPKtList:SetAnchorOffsets(0, -100, -15, 165)		
+
+self:PopulateDKPKtList()
+self.wndDKPKtList:Invoke()
+end
+
+---------------------------------------------------------------------------------------------------
+-- DKP_Konten_ListItem Functions
+---------------------------------------------------------------------------------------------------
+
+function DKP_Manager:OnDKPKtSelected( wndHandler, wndControl, eMouseButton, nLastRelativeMouseX, nLastRelativeMouseY )
+   if wndHandler ~= wndControl then
+        return
+    end
+    
+    -- change the old item's text color back to normal color
+    local wndItemText
+    if self.wndSelectedListItem ~= nil then
+        wndItemText = self.wndSelectedListItem:FindChild("lbl_desc"):GetText()
+
+      --  wndItemText:SetTextColor(kcrNormalText)
+    end
+    
+	-- wndControl is the item selected - change its color to selected
+	self.wndSelectedListItem = wndControl
+	wndItemText = self.wndSelectedListItem:FindChild("PlayerName")
+   -- wndItemText:SetTextColor(kcrSelectedText)
+    
+    self.wndSettingsList:FindChild("Label_KtDropDown_Name"):SetText(wndItemText)   
+    
+		--self:SearchForItems(self.wndSelectedListItem:GetData())
+		--self.wndItems:Invoke()
+	
+
 end
 
 -----------------------------------------------------------------------------------------------
