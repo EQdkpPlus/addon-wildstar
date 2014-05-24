@@ -18,6 +18,7 @@ local dkpUserSettings = {
 "itemBetTime",
 "isAllowWhisper",
 "isTwinkMode",
+"engTime",
 "DKPChatChannelSay",
 "DKPChatChannelInstance",
 "DKPChatChannelGroup",
@@ -26,6 +27,7 @@ local dkpUserSettings = {
 "BnWChatChannelInstance",
 "BnWChatChannelGroup",
 "dkpKtId",
+"dkpItemPoolID",
 "BnWChatChannelGuild"
 }
 
@@ -106,6 +108,7 @@ function DKP_Manager:OnDocLoaded()
 			Apollo.AddAddonErrorText(self, "Could not load the BetAndWin Window for some reason.")
 			return
 		end
+		self.wndImport = Apollo.LoadForm(self.xmlDoc, "DKP_Import",nil,self)
 
 
 		
@@ -124,6 +127,7 @@ function DKP_Manager:OnDocLoaded()
 		self.wndItems:Show(false,true)
 		self.wndBetAndWin:Show(false,true)
 		self.wndSettings:Show(false,true)
+		self.wndImport:Show(false,true)
 		--self.wndDKPKtList:Show(false,true)
 
 		-- if the xmlDoc is no longer needed, you should set it to nil
@@ -136,6 +140,7 @@ function DKP_Manager:OnDocLoaded()
 		Apollo.RegisterSlashCommand("dkpm", "OnDKP_RemoveDKP",self)
 		Apollo.RegisterTimerHandler("OnSecTimer", "OnTimer", self)
 		Apollo.RegisterEventHandler("MasterLootUpdate",	"OnMasterLootUpdate", self)
+		
 		
 		self:GetTwinkString()
 		
@@ -184,14 +189,42 @@ end
 
 
 function DKP_Manager:OnDKP_RemoveDKP(befehl,zahl,player)
-player = "Germi"
-gdkp.players[player]["dkp_current"] = gdkp.players[player]["dkp_current"]-10
+--strTime = DKP_Manager:normalize(1400944950)
+strTime = DKP_Manager:GetTimeStringFromUnix(1400944950, self.engTime)
+ChatSystemLib.Command("/s " .. strTime)
+
 end
+
 
 function DKP_Manager:OnConfig()
 self:RefreshSettings()	
 self.wndSettings:Invoke()
 end
+
+function DKP_Manager:GetTimeStringFromUnix(myTime, engTime)
+strTime = os.date("*t", myTime)
+if string.len(strTime.month) == 1 then strTime.month = ("0" .. strTime.month) end
+if string.len(strTime.day) == 1 then strTime.day = ("0" .. strTime.day) end
+if string.len(strTime.hour) == 1 then strTime.hour = ("0" .. strTime.hour) end
+if string.len(strTime.min) == 1 then strTime.min = ("0" .. strTime.min) end
+
+	if engTime == false then
+		strNewTime = strTime.day .. "." .. strTime.month .. "." .. strTime.year .. " " .. strTime.hour .. ":" .. strTime.min
+		return strNewTime
+	else
+		strNewTime = strTime.year .. "-" .. strTime.month .. "-" .. strTime.day .. ""
+			if strTime.hour > 12 and strTime.hour < 23 then
+				strHour = strTime.hour - 12
+				if string.len(strHour) == 1 then strHour = ("0" .. strHour) end
+				strNewTime = strNewTime .. " " .. strHour .. ":" .. strTime.min .. "pm"
+			else
+				if string.len(strTime.hour) == 1 then strTime.hour = ("0" .. strTime.hour) end
+				strNewTime = strNewTime .. " " .. strTime.hour .. ":" .. strTime.min .. "am"
+			end
+	return strNewTime
+	end
+end
+
 
 -- Save User Settings
 function DKP_Manager:OnSave(eType)
@@ -242,6 +275,8 @@ function DKP_Manager:DefaultSettings()
 	self.BnWChatChannelGroup = false;
 	self.BnWChatChannelGuild = false;
 	self.isAllowWhisper = true;
+	self.engTime = true;
+	self.dkpItemPoolID = 1;
 	tMasterLoot = {}
 	tMasterLootItemList = {}
 	tLooterItemList = {}
@@ -272,6 +307,7 @@ function DKP_Manager:RefreshSettings()
 	self.wndSettings:FindChild("btn_BnWSettings_ChatGroup"):SetCheck(self.BnWChatChannelGroup)
 	self.wndSettings:FindChild("btn_BnWSettings_ChatGuild"):SetCheck(self.BnWChatChannelGuild)
 	self.wndSettings:FindChild("Label_KtDropDown_Name"):SetText(multidkp_pools[tonumber(self.dkpKtId)].desc)
+	self.wndSettings:FindChild("btn_DKPSettings_EnableEngTime"):SetCheck(self.engTime)
 	end
 	
 end
@@ -435,6 +471,16 @@ function DKP_Manager:searchChanged( wndHandler, wndControl, strText )
 	self.wndItemList:ArrangeChildrenVert()
 end
 
+function DKP_Manager:GetItemPool(itpID, ktID)
+
+--multidkp_pools[1].mdkp_itempools
+for key,val in pairs(multidkp_pools[ktID]["mdkp_itempools"]) do
+	if multidkp_pools[ktID].mdkp_itempools[key] == itpID then
+	return true
+	end
+end
+end
+
 -----------------------------------------------------------------------------------------------
 -- ItemList Functions
 -----------------------------------------------------------------------------------------------
@@ -525,6 +571,14 @@ function DKP_Manager:DestroyDKPItemList()
 	-- clear the list item array
 	self.dkpItems= {}
 	end
+	
+function DKP_Manager:DestroyReasonList()
+	for key,val in pairs(self.reasonItem) do
+		self.reasonItem[key]:Destroy()
+	--self.reasonItem[PlayerName] = wnd
+	end
+end
+	
 
 
 
@@ -564,7 +618,7 @@ function DKP_Manager:AddDKPKtItem(ktID,ktDesc)
 end
 
 -- add an item into the item list
-function DKP_Manager:AddDKPItem(PlayerName,ItemName,DKPName)
+function DKP_Manager:AddDKPItem(PlayerName,ItemName,DKPName, ItemID)
 	-- load the window item for the list item
 	local wnd = Apollo.LoadForm(self.xmlDoc, "ListDKPItem", self.wndDKPItemList, self)
 	
@@ -576,28 +630,32 @@ function DKP_Manager:AddDKPItem(PlayerName,ItemName,DKPName)
 	local wndPlayerText = wnd:FindChild("PlayerName")
 	local wndItemText = wnd:FindChild("ItemName")
 	local wndDKPText = wnd:FindChild("DKPName")
+	local wndItemID = wnd:FindChild("ItemID")
 	wndPlayerText:SetText(PlayerName) -- set the item wnd's text to "item i"
 	wndItemText:SetText(ItemName)
 	wndDKPText:SetText(DKPName)
+	wndItemID:SetText(ItemID)
 	wnd:SetData(ItemName)
 end
 
-function DKP_Manager:AddReasonItem(PlayerName,ReasonName,DKPName)
+function DKP_Manager:AddReasonItem(PlayerName,ReasonName,DKPName, DKPTime)
 	-- load the window item for the list item
-	local wnd = Apollo.LoadForm(self.xmlDoc, "ReasonItem", self.wndDKPItemList, self)
-	
+	local wnd = Apollo.LoadForm(self.xmlDoc, "ReasonItem", self.wndReasonItemList, self)
+	strTime = DKP_Manager:GetTimeStringFromUnix(tonumber(DKPTime), self.engTime)
 	
 	-- keep track of the window item created
-	self.reasonItem[PlayerName] = wnd
-
+	indexfor = "" .. PlayerName .. ReasonName .. DKPName .. ""
+	self.reasonItem[indexfor] = wnd
 	-- give it a piece of data to refer to 
 	local wndPlayerText = wnd:FindChild("PlayerName")
-	local wndItemText = wnd:FindChild("ItemName")
+	local wndItemText = wnd:FindChild("ReasonName")
 	local wndDKPText = wnd:FindChild("DKPName")
+	local wndDKPTime = wnd:FindChild("DKPTime")
 	wndPlayerText:SetText(PlayerName) -- set the item wnd's text to "item i"
-	wndItemText:SetText(ItemName)
+	wndItemText:SetText(ReasonName)
+	wnd:SetData(PlayerName)
+	wndDKPTime:SetText(strTime)
 	wndDKPText:SetText(DKPName)
-	wnd:SetData(ItemName)
 end
 
 function DKP_Manager:AddListBidder(PlayerName,DKPName)
@@ -657,9 +715,11 @@ if (players[tonumber(playerID)] ~= nil) then
         self:DestroyDKPItemList()
                 if (players[playerID].items ~= nil) then
                         for key,val in pairs(players[playerID].items) do
-                                        self:AddDKPItem(strPlayerName,players[playerID].items[key].name,players[playerID].items[key].value)
+							if DKP_Manager:GetItemPool(players[playerID].items[key].itempool_id, tonumber(self.dkpKtId)) then
+                                        self:AddDKPItem(strPlayerName,players[playerID].items[key].name,players[playerID].items[key].value,players[key]["items"][key][game_id])
                                         iMaxItems = iMaxItems+1
                                         iMaxDKP = iMaxDKP+tonumber(players[playerID].items[key].value)
+							end
                         end;
                 end;
         local wndItems = Apollo.FindWindowByName("DKP_ListItems")
@@ -679,13 +739,15 @@ end
 end
 
 function DKP_Manager:SearchForReasons(strPlayerName)
-if (dkpr ~= nil and dkpr[strPlayerName] ~= nil) then
+playerID = DKP_Manager:GetPlayerID(strPlayerName)
+if (players[playerID] ~= nil) then
               self:DestroyReasonList()
-                if (dkpr[strPlayerName] ~= nil) then
-                        for key,val in pairs(dkpr[strPlayerName]) do
-                                        self:AddReasonItem(strPlayerName,dkpr[strPlayerName]["Reason"],dkpr[strPlayerName]["DKP"])
+                if (players[playerID] ~= nil) then
+                        for key,val in pairs(players[playerID].adjustments) do
+                                        self:AddReasonItem(strPlayerName,players[playerID]["adjustments"][key].reason,players[playerID]["adjustments"][key].value,players[playerID]["adjustments"][key].timestamp)
                         end;
-                end;
+                end
+self.wndReasonItemList:ArrangeChildrenVert()
         end
 end
 
@@ -755,17 +817,21 @@ function DKP_Manager:OnImportData()
 
 
 
-	ImportData = self.wndSettings:FindChild("Window_Import"):FindChild("BGImport"):FindChild("ImportData"):GetText()
+	ImportData = self.wndImport:FindChild("BGImport"):FindChild("ImportData"):GetText()
 	if ImportData == "" then
 	return
 	else
 	
 	--JSON:decode(ImportData)
 	load_table = loadstring(ImportData)
+	if load_table == nil then
+	ImportData = self.wndImport:FindChild("BGImport"):FindChild("ImportData"):SetText("ERROR")
+	else
 	load_table()
 	self:DestroyItemList()
 	self:PopulateItemList()
-	ImportData = self.wndSettings:FindChild("Window_Import"):FindChild("BGImport"):FindChild("ImportData"):SetText("")
+	ImportData = self.wndImport:FindChild("BGImport"):FindChild("ImportData"):SetText("SUCCSESS")
+	end
 	end
 
 end
@@ -833,6 +899,11 @@ end
 function DKP_Manager:OnCancelBnW()
 	self.wndBetAndWin:Close() -- hide the window
 end
+function DKP_Manager:OnCancelImport()
+	self.wndImport:Close()
+end
+
+
 
 function DKP_Manager:Button_EnableDKPSay( wndHandler, wndControl)
 self.DKPChatChannelSay = wndControl:IsChecked()
@@ -918,6 +989,10 @@ function DKP_Manager:Button_EnableTwinkMode( wndHandler, wndControl, eMouseButto
 self.isTwinkMode = wndControl:IsChecked()
 end
 
+function DKP_Manager:Button_EnableEngTime( wndHandler, wndControl, eMouseButton )
+self.engTime = wndControl:IsChecked()
+end
+
 function DKP_Manager:Slider_DrawTimer( wndHandler, wndControl, fNewValue, fOldValue )
 firstmatch = false
 
@@ -951,6 +1026,12 @@ self:PopulateDKPKtList()
 self.wndDKPKtList:Invoke()
 end
 
+function DKP_Manager:OpenImportWindow( wndHandler, wndControl, eMouseButton )
+self.wndImport:Invoke()
+end
+
+
+
 ---------------------------------------------------------------------------------------------------
 -- DKP_Konten_ListItem Functions
 ---------------------------------------------------------------------------------------------------
@@ -976,7 +1057,6 @@ function DKP_Manager:OnDKPKtSelected( wndHandler, wndControl, eMouseButton, nLas
     
     self.wndSettingsList:FindChild("Label_KtDropDown_Name"):SetText(wndItemText)  
 	self.dkpKtId = wndKtID 
-	
 	self.wndDKPKtList:Destroy()
     
 		--self:SearchForItems(self.wndSelectedListItem:GetData())
@@ -984,6 +1064,13 @@ function DKP_Manager:OnDKPKtSelected( wndHandler, wndControl, eMouseButton, nLas
 	
 
 end
+
+
+
+---------------------------------------------------------------------------------------------------
+-- DKP_Import Functions
+---------------------------------------------------------------------------------------------------
+
 
 -----------------------------------------------------------------------------------------------
 -- DKP_Manager Instance
