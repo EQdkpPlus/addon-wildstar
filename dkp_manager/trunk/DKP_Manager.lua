@@ -306,7 +306,9 @@ function DKP_Manager:RefreshSettings()
 	self.wndSettings:FindChild("btn_BnWSettings_ChatInstance"):SetCheck(self.BnWChatChannelInstance)
 	self.wndSettings:FindChild("btn_BnWSettings_ChatGroup"):SetCheck(self.BnWChatChannelGroup)
 	self.wndSettings:FindChild("btn_BnWSettings_ChatGuild"):SetCheck(self.BnWChatChannelGuild)
+	if multidkp_pools[tonumber(self.dkpKtId)].desc ~= nil then
 	self.wndSettings:FindChild("Label_KtDropDown_Name"):SetText(multidkp_pools[tonumber(self.dkpKtId)].desc)
+	end
 	self.wndSettings:FindChild("btn_DKPSettings_EnableEngTime"):SetCheck(self.engTime)
 	end
 	
