@@ -137,7 +137,7 @@ function DKP_Manager:OnDocLoaded()
 		-- e.g. Apollo.RegisterEventHandler("KeyDown", "OnKeyDown", self)
 		Apollo.RegisterSlashCommand("dkp", "OnDKP_ManagerOn", self)
 		Apollo.RegisterSlashCommand("dkpw", "OnDKP_BnWInit", self)
-		Apollo.RegisterSlashCommand("dkpm", "OnDKP_RemoveDKP",self)
+		Apollo.RegisterSlashCommand("dkpm", "OnDKP_AddItem",self)
 		Apollo.RegisterTimerHandler("OnSecTimer", "OnTimer", self)
 		Apollo.RegisterEventHandler("MasterLootUpdate",	"OnMasterLootUpdate", self)
 		
@@ -1032,6 +1032,10 @@ end
 
 function DKP_Manager:OpenImportWindow( wndHandler, wndControl, eMouseButton )
 self.wndImport:Invoke()
+end
+
+function DKP_Manager:OnDKP_AddItem()
+	players[1].items[#players[1].items + 1] = {game_id = 12345, itempool_id = 1, name = "SUCCESS!", value = 30}
 end
 
 
