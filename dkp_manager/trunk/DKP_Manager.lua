@@ -271,6 +271,7 @@ function DKP_Manager:RefreshSettings()
 	self.wndSettings:FindChild("btn_BnWSettings_ChatInstance"):SetCheck(self.BnWChatChannelInstance)
 	self.wndSettings:FindChild("btn_BnWSettings_ChatGroup"):SetCheck(self.BnWChatChannelGroup)
 	self.wndSettings:FindChild("btn_BnWSettings_ChatGuild"):SetCheck(self.BnWChatChannelGuild)
+	self.wndSettings:FindChild("Label_KtDropDown_Name"):SetText(multidkp_pools[tonumber(self.dkpKtId)].desc)
 	end
 	
 end
@@ -329,11 +330,11 @@ if self.isAllowWhisper == false then return end
 		ChatSystemLib.Command("/w " .. strCompleteName .. " You are not in a Group or Raid with the DKP Manager!")
 		return
 	end
-	nTableSize = tonumber(multiTable.getn)
-	if (gdkp.players[tMessage.strSender] == nil) then
+	local playerID = self:GetPlayerID(tMessage.strSender)
+	if (players[playerID] == nil) then
 		ChatSystemLib.Command("/w " .. strCompleteName .. " You are not registered in the current DKP Table!")
-	elseif(gdkp.players[tMessage.strSender] ~= nil) then
-		ChatSystemLib.Command("/w " .. strCompleteName .. " You have: " .. gdkp.players[tMessage.strSender]["dkp_current"] .. " DKPs")
+	elseif(players[playerID] ~= nil) then
+		ChatSystemLib.Command("/w " .. strCompleteName .. " You have: " .. players[playerID]["points"][tonumber(self.dkpKtId)][pointsCurrentModeString] .. " DKPs")
 			--SendChatMessage(WHISPER_PREFIX..TEXT_DKPInfo..gdkp.players[Username][gdkp_Konto.."_current"].." "..gdkp_Konto.." "..dkpstring, "WHISPER", this.language,arg2);
 	else
 		gdkp_Alias_found = "You are not in this Raid";
@@ -353,10 +354,10 @@ end
 end
 
 function DKP_Manager:ReportDKP()
-if (gdkp.players == nil) then return end
-for key,val in pairs(gdkp.players) do
+if (players == nil) then return end
+for key,val in pairs(players) do
 		--self:AddItem(key,gdkp.players[key].class,gdkp.players[key].dkp_current)
-		ChatSystemLib.Command(self:GetDKPChat("DKP") .. " " .. key .. " " .. gdkp.players[key].class .. " " .. gdkp.players[key].dkp_current .. " ")
+		ChatSystemLib.Command(self:GetDKPChat("DKP") .. " " .. players[key].name .. " " .. players[key].class_name .. " " .. players[key]["points"][tonumber(self.dkpKtId)][pointsCurrentModeString] .. " ")
 	end;
 
 --ChatSystemLib.PostOnChannel(DKPChatChannel,"yeah!")
@@ -423,13 +424,12 @@ function DKP_Manager:searchChanged( wndHandler, wndControl, strText )
 	self:DestroyItemList()
 	if (players == nil) then return end 
 
-		for key,val in pairs(gdkp.players) do
-			if (DKP_ITEMS[key] ~= nil) then
-			strPlayerKey = key
+		for key,val in pairs(players) do
+				strPlayerKey = players[key].name
 			
 				if string.find(string.lower(strPlayerKey), string.lower(strText)) then
-					self:AddItem(key,gdkp.players[key].class,gdkp.players[key].dkp_current)
-				end
+					self:AddItem(strPlayerKey,players[key].class_name,players[key]["points"][tonumber(self.dkpKtId)][pointsCurrentModeString])
+				
 			end;
 		end
 	self.wndItemList:ArrangeChildrenVert()
@@ -446,7 +446,7 @@ function DKP_Manager:PopulateItemList()
 			return
 		else 
 		for key,val in pairs(players) do
-			self:AddItem(players[key].name,players[key].class_name,players[key]["points"][1][pointsCurrentModeString])
+			self:AddItem(players[key].name,players[key].class_name,players[key]["points"][tonumber(self.dkpKtId)][pointsCurrentModeString])
 		end
 	end;
 	-- now all the item are added, call ArrangeChildrenVert to list out the list items vertically
@@ -650,15 +650,16 @@ end
 
 
 function DKP_Manager:SearchForItems(strPlayerName)
-if (DKP_ITEMS[strPlayerName] ~= nil) then
+local playerID = DKP_Manager:GetPlayerID(strPlayerName)
+if (players[tonumber(playerID)] ~= nil) then
         local iMaxItems = 0
         local iMaxDKP = 0
         self:DestroyDKPItemList()
-                if (DKP_ITEMS[strPlayerName] ~= nil) then
-                        for key,val in pairs(DKP_ITEMS[strPlayerName]["Items"]) do
-                                        self:AddDKPItem(strPlayerName,DKP_ITEMS[strPlayerName]["Items"][key].name,DKP_ITEMS[strPlayerName]["Items"][key].dkp)
+                if (players[playerID].items ~= nil) then
+                        for key,val in pairs(players[playerID].items) do
+                                        self:AddDKPItem(strPlayerName,players[playerID].items[key].name,players[playerID].items[key].value)
                                         iMaxItems = iMaxItems+1
-                                        iMaxDKP = iMaxDKP+tonumber(DKP_ITEMS[strPlayerName]["Items"][key].dkp)
+                                        iMaxDKP = iMaxDKP+tonumber(players[playerID].items[key].value)
                         end;
                 end;
         local wndItems = Apollo.FindWindowByName("DKP_ListItems")
@@ -667,9 +668,9 @@ if (DKP_ITEMS[strPlayerName] ~= nil) then
         local ktName = wndItems:FindChild("lbl_dkp_kt_display")
         local ktPlayerName = wndItems:FindChild("lbl_dkp_player_display")
         local ktCurDKP = wndItems:FindChild("lbl_dkp_current_display")
-        ktName:SetText("dkp")
+        ktName:SetText(multidkp_pools[tonumber(self.dkpKtId)].desc)
         ktPlayerName:SetText(strPlayerName)
-        ktCurDKP:SetText(gdkp.players[strPlayerName]["dkp_current"])
+        ktCurDKP:SetText(players[playerID]["points"][tonumber(self.dkpKtId)][pointsCurrentModeString])
         maxDKP:SetText("DKP spend: " .. tostring(iMaxDKP))
         maxItems:SetText("Items earned: " .. tostring(iMaxItems))
         self.wndDKPItemList:ArrangeChildrenVert()
@@ -961,7 +962,7 @@ function DKP_Manager:OnDKPKtSelected( wndHandler, wndControl, eMouseButton, nLas
     
     -- change the old item's text color back to normal color
     local wndItemText
-    if self.wndSelectedListItem ~= nil then
+    if self.wndSelectedListItem  ~= nil then
         wndItemText = self.wndSelectedListItem:FindChild("lbl_desc"):GetText()
 
       --  wndItemText:SetTextColor(kcrNormalText)
@@ -969,10 +970,14 @@ function DKP_Manager:OnDKPKtSelected( wndHandler, wndControl, eMouseButton, nLas
     
 	-- wndControl is the item selected - change its color to selected
 	self.wndSelectedListItem = wndControl
-	wndItemText = self.wndSelectedListItem:FindChild("PlayerName")
+	wndItemText = self.wndSelectedListItem:FindChild("lbl_desc"):GetText()
+	wndKtID = self.wndSelectedListItem:FindChild("lbl_id"):GetText()
    -- wndItemText:SetTextColor(kcrSelectedText)
     
-    self.wndSettingsList:FindChild("Label_KtDropDown_Name"):SetText(wndItemText)   
+    self.wndSettingsList:FindChild("Label_KtDropDown_Name"):SetText(wndItemText)  
+	self.dkpKtId = wndKtID 
+	
+	self.wndDKPKtList:Destroy()
     
 		--self:SearchForItems(self.wndSelectedListItem:GetData())
 		--self.wndItems:Invoke()
