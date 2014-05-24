@@ -79,6 +79,7 @@ function DKP_Manager:OnLoad()
 	Apollo.RegisterEventHandler("GuildRoster", "OnGuildRoster", self)
 	Apollo.RegisterEventHandler("ChatMessage", "WhisperCommand", self)
 	Apollo.RegisterEventHandler("Group_Join", "OnGroupJoin", self)
+	Apollo.RegisterEventHandler("LootAssigned", "OnLootAssigned", self)
 	
     -- load our form file
 	self.xmlDoc = XmlDoc.CreateFromFile("DKP_Manager.xml")
@@ -544,7 +545,7 @@ function DKP_Manager:DestroyBetList(PlayerName)
 	
 	if PlayerName == "" then
 		for key,val in pairs(self.betItem) do
-			self.betItems[key]:Destroy()
+			self.betItem[key]:Destroy()
 		end
 	else
 		for key,val in pairs(self.betItem) do
@@ -755,7 +756,7 @@ end
 
 
 function DKP_Manager:OnMasterLootUpdate()
-	
+
 	local tMasterLoot = GameLib.GetMasterLoot()
 	local tMasterLootItemList = {}
 	local tLooterItemList = {}
@@ -763,6 +764,7 @@ function DKP_Manager:OnMasterLootUpdate()
 	for idx, tLootItem in ipairs(tMasterLoot) do
 			if tLootItem.bIsMaster then
 				table.insert(tMasterLootItemList, tLootItem)
+				self:OnDKP_BnWInit()
 			else
 				table.insert(tLooterItemList, tLootItem)
 			end
@@ -1038,7 +1040,21 @@ function DKP_Manager:OnDKP_AddItem()
 	players[1].items[#players[1].items + 1] = {game_id = "12345", itempool_id = "1", name = "SUCCESS!", value = "30"}
 end
 
+function DKP_Manager:OnLootAssigned(item, player)
+	for key,lstitem in pairs(self.betItem) do
+		local Rover = Apollo.GetAddon("Rover")
+		Rover:AddWatch("Player", playername)
+		if lstitem:FindChild("PlayerName"):GetText() == player then
+			for key,val in pairs(players) do
+				if players[key].name == player then
+					players[key].items[#players[key].items + 1] = {game_id = tostring(item:GetItemId()), itempool_id = tostring(self.dkpItemPoolID), name = item:GetName(), value = lstitem:FindChild("DKPName"):GetText()}
+					ChatSystemLib.Command(self:GetDKPChat("BnW") .. item:GetChatLinkString() .. " assigned to " .. player .. " for " .. lstitem:FindChild("DKPName"):GetText() .. " DKP!")
+				end
+			end
+		end					
+	end
 
+end
 
 ---------------------------------------------------------------------------------------------------
 -- DKP_Konten_ListItem Functions
