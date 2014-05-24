@@ -1048,7 +1048,7 @@ function DKP_Manager:OnLootAssigned(item, player)
 			for key,val in pairs(players) do
 				if players[key].name == player then
 					players[key].items[#players[key].items + 1] = {game_id = tostring(item:GetItemId()), itempool_id = tostring(self.dkpItemPoolID), name = item:GetName(), value = lstitem:FindChild("DKPName"):GetText()}
-					ChatSystemLib.Command(self:GetDKPChat("BnW") .. item:GetChatLinkString() .. " assigned to " .. player .. " for " .. lstitem:FindChild("DKPName"):GetText() .. " DKP!")
+					ChatSystemLib.Command(self:GetDKPChat("BnW") .. " " .. item:GetChatLinkString() .. " assigned to " .. player .. " for " .. lstitem:FindChild("DKPName"):GetText() .. " DKP!")
 				end
 			end
 		end					
