@@ -718,7 +718,7 @@ if (players[tonumber(playerID)] ~= nil) then
                 if (players[playerID].items ~= nil) then
                         for key,val in pairs(players[playerID].items) do
 							if DKP_Manager:GetItemPool(players[playerID].items[key].itempool_id, tonumber(self.dkpKtId)) then
-                                        self:AddDKPItem(strPlayerName,players[playerID].items[key].name,players[playerID].items[key].value,players[key]["items"][key][game_id])
+                                        self:AddDKPItem(strPlayerName,players[playerID].items[key].name,players[playerID].items[key].value,players[playerID].items[key].game_id)
                                         iMaxItems = iMaxItems+1
                                         iMaxDKP = iMaxDKP+tonumber(players[playerID].items[key].value)
 							end
@@ -1035,7 +1035,7 @@ self.wndImport:Invoke()
 end
 
 function DKP_Manager:OnDKP_AddItem()
-	players[1].items[#players[1].items + 1] = {game_id = 12345, itempool_id = 1, name = "SUCCESS!", value = 30}
+	players[1].items[#players[1].items + 1] = {game_id = "12345", itempool_id = "1", name = "SUCCESS!", value = "30"}
 end
 
 
