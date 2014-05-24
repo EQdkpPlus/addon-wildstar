@@ -1014,18 +1014,20 @@ end
 
 
 function DKP_Manager:OnDKPKtToogle( wndHandler, wndControl, eMouseButton )
-if self.wndDKPKtList ~= nil then
-	self.wndDKPKtList:Destroy()
+if multidkp_pools ~= nil then
+	if self.wndDKPKtList ~= nil then
+		self.wndDKPKtList:Destroy()
 
+	end
+	self.wndDKPKtList = Apollo.LoadForm(self.xmlDoc, "DKP_Konten", wndControl, self)
+	self.wndDKPKtItemList = self.wndDKPKtList:FindChild("KontenList")
+	self.wndDKPKtList:SetData(wndControl)
+	self.wndDKPKtList:SetAnchorPoints(0,1,1,0)
+	self.wndDKPKtList:SetAnchorOffsets(0, -100, -15, 165)		
+
+	self:PopulateDKPKtList()
+	self.wndDKPKtList:Invoke()
 end
-self.wndDKPKtList = Apollo.LoadForm(self.xmlDoc, "DKP_Konten", wndControl, self)
-self.wndDKPKtItemList = self.wndDKPKtList:FindChild("KontenList")
-self.wndDKPKtList:SetData(wndControl)
-self.wndDKPKtList:SetAnchorPoints(0,1,1,0)
-self.wndDKPKtList:SetAnchorOffsets(0, -100, -15, 165)		
-
-self:PopulateDKPKtList()
-self.wndDKPKtList:Invoke()
 end
 
 function DKP_Manager:OpenImportWindow( wndHandler, wndControl, eMouseButton )
