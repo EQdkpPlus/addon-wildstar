@@ -810,11 +810,7 @@ function DKP_Manager:onClick(wndHandler, wndControl)
 
 	--ChatSystemLib.Command('/w' .. ' Whiskeey ' .. Item.GetDataFromId(wndControl:FindChild("holderID"):GetText()):GetName())
 	itemWeBetFor = Item.GetDataFromId(wndControl:FindChild("holderID"):GetText())
-	isWinTime = true
-	isFirstCalling=true
-	self.timer = ApolloTimer.Create(1.0,true,"OnTimer",self)
-	betTime = self.itemBetTime
-	
+		
 end
 
 function DKP_Manager:OnImportData()
@@ -1090,11 +1086,16 @@ function DKP_Manager:OnDKPKtSelected( wndHandler, wndControl, eMouseButton, nLas
 end
 
 
-
----------------------------------------------------------------------------------------------------
--- DKP_Import Functions
----------------------------------------------------------------------------------------------------
-
+function DKP_Manager:OnStartAuction( betItem )
+	if betItem ~= Nil and betItem ~= "" then
+		isWinTime = true
+		isFirstCalling=true
+		self.timer = ApolloTimer.Create(1.0,true,"OnTimer",self)
+		betTime = self.itemBetTime
+	else
+		ChatSystemLib.PostOnChannel(ChatSystemLib.ChatChannel_System, "You dont have an Item selected!")
+	end
+end
 
 -----------------------------------------------------------------------------------------------
 -- DKP_Manager Instance
