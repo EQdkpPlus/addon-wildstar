@@ -112,10 +112,12 @@ function DKP_Manager:OnDocLoaded()
 		end
 		self.wndImport = Apollo.LoadForm(self.xmlDoc, "DKP_Import",nil,self)
 
-
+		
 		
 		self.wndSettings = Apollo.LoadForm(self.xmlDoc, "DKP_Settings",nil,self)
 		self.wndSettingsList = Apollo.LoadForm(self.xmlDoc,"DKP_SettingsList", self.wndSettings:FindChild("SettingsList"),self)
+		
+		self.BnWAssigned = Apollo.LoadForm(self.xmlDoc,"DKP_BnW_Assigned", nil, self)
 		
 		-- item list
 		self.wndItemList = self.wndMain:FindChild("ItemList")
@@ -131,6 +133,7 @@ function DKP_Manager:OnDocLoaded()
 		self.wndBetAndWin:Show(false,true)
 		self.wndSettings:Show(false,true)
 		self.wndImport:Show(false,true)
+		self.BnWAssigned:Show(false, true)
 		--self.wndDKPKtList:Show(false,true)
 
 		-- if the xmlDoc is no longer needed, you should set it to nil
@@ -1096,17 +1099,25 @@ end
 
 function DKP_Manager:OnLootAssigned(item, player)
 	for key,lstitem in pairs(self.betItem) do
-		local Rover = Apollo.GetAddon("Rover")
-		Rover:AddWatch("Player", playername)
 		if lstitem:FindChild("PlayerName"):GetText() == player then
 			for key,val in pairs(players) do
 				if players[key].name == player then
+					self:BnWAssigned(item, player, lstitem:FindChild("DKPName"):GetText())
 					players[key].items[#players[key].items + 1] = {game_id = tostring(item:GetItemId()), itempool_id = tostring(self.dkpItemPoolID), name = item:GetName(), value = lstitem:FindChild("DKPName"):GetText()}
 					ChatSystemLib.Command(self:GetDKPChat("BnW") .. " " .. item:GetChatLinkString() .. " assigned to " .. player .. " for " .. lstitem:FindChild("DKPName"):GetText() .. " DKP!")
 				end
 			end
 		end					
 	end
+
+end
+
+function DKP_Manager:BnWAssigned(item, player, value)
+
+self.BnWAssigned:FindChild("lbl_item_name"):SetText(tostring(item:GetName()))
+self.BnWAssigned:FindChild("BGImport"):FindChild("fldDKPValue"):SetText(value)
+
+self.BnWAssigned:Show(true)
 
 end
 
