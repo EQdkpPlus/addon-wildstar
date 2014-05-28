@@ -804,6 +804,8 @@ function DKP_Manager:OnMasterLootUpdate()
 	local tMasterLoot = GameLib.GetMasterLoot()
 	local tMasterLootItemList = {}
 	local tLooterItemList = {}
+	
+	wndControlOld = nil
 		
 	for idx, tLootItem in ipairs(tMasterLoot) do
 			if tLootItem.bIsMaster then
@@ -825,12 +827,14 @@ local i = 1
 for idx, tItem in ipairs (tLootItems) do
 			local wnd = Apollo.LoadForm(self.xmlDoc, "ListItemLoot", self.wndBetAndWinItemList, self)
 			local wndItemIcon = wnd:FindChild("iconLoot")
+			wndItemHighlight = wnd:FindChild("itemHighlight")
 			i = i + 1
 			if wndItemIcon then -- make sure the wnd exist
 				wndItemIcon:SetSprite(tItem.itemDrop:GetIcon())
 				wndItemIcon:SetData(Item.GetDataFromId(itemId))
 				Tooltip.GetItemTooltipForm(self, wndItemIcon, tItem.itemDrop, {bPrimary = true, bSelling = false})
 				wndItemIcon:FindChild("holderID"):SetText(tItem.itemDrop:GetItemId())
+				wndItemHighlight:Show(false)
 			end
 			self.tItemsLoot[tostring(i)] = wnd
 			wnd:SetData(i)			
@@ -852,9 +856,21 @@ end
 
 function DKP_Manager:onClick(wndHandler, wndControl)
 
-	--ChatSystemLib.Command('/w' .. ' Whiskeey ' .. Item.GetDataFromId(wndControl:FindChild("holderID"):GetText()):GetName())
+	--ChatSystemLib.Command('/w' .. ' Hayato ' .. wndControl:FindChild("holderID"):GetText())
+	
 	itemWeBetFor = Item.GetDataFromId(wndControl:FindChild("holderID"):GetText())
-		
+	
+	if wndControlOld then
+		if wndControlOld == wndControl then return end
+			wndControlOld:GetParent():FindChild("itemHighlight"):Show(false)
+			wndControl:GetParent():FindChild("itemHighlight"):Show(true)
+			wndControlOld = wndControl
+
+	else
+		wndControlOld = wndControl
+		wndControl:GetParent():FindChild("itemHighlight"):Show(true)
+	end
+	
 end
 
 function DKP_Manager:OnImportData()
@@ -881,34 +897,61 @@ function DKP_Manager:OnImportData()
 end
 
 function DKP_Manager:OnDKPAdd(wndHandler, wndControl)
+			amount = self.wndItems:FindChild("fld_add_amount"):GetText()
 
-	playerName = self.wndItems:FindChild("lbl_dkp_player_display"):GetText()
-	amount = self.wndItems:FindChild("fld_add_amount"):GetText()
-	reason = self.wndItems:FindChild("fld_add_reason"):GetText()
+	if tonumber(amount) then
+
+		dkpKt = self.dkpKtId
+		eventID = self.dkpEventId
+		playerName = self.wndItems:FindChild("lbl_dkp_player_display"):GetText()
+		reason = self.wndItems:FindChild("fld_add_reason"):GetText()
+		itemPool = self.dkpItemPoolID
+		
+
+		if self.dkpItemPoolID == nil then return end
+		if self.dkpKtId == nil then return end
+		if self.isTwinkMode == nil then return end
+		if playerName == "PLAYERNAME" or playerName == "" or playerName == nil then return end
+		if self.wndItems:FindChild("Label_EventDropDown_Name"):GetText() == "NO EVENT" then 
+		ChatSystemLib.PostOnChannel(ChatSystemLib.ChatChannel_System, "You need a Event for DKP Adjustment!")
+		return
+		end 
 	
-	if playerName ~= "PLAYERNAME" and playerName ~="" and playerName ~= nil then
-		if tonumber(amount) then
-			gdkp.players[playerName]["dkp_current"] = gdkp.players[playerName]["dkp_current"]+tonumber(amount)
+		playerID = DKP_Manager:GetPlayerID(playerName)
+		if players[playerID].points == nil then return end
+		if playerID == nil then return end
+	
+			if self.isTwinkMode then
+				for key,val in pairs(players) do
+					--if players[key]
+				end
+			else
 			
-			if dkpr.players[playerName] == nil then
-			playerInsert = {playerName=playerName}
-			table.insert(dkpr.players, playerInsert)
-			
+				
+				for key,val in pairs(players[playerID].points) do
+				
+				--for key,val in pairs(players[playerID].points) do
+					if players[playerID]["points"][key].multidkp_id == tostring(dkpKt) then
+								
+						players[playerID]["points"][key][pointsCurrentModeString] = players[playerID]["points"][key][pointsCurrentModeString]+tonumber(amount)
+						players[playerID]["points"][key][adjustmentModeString] = players[playerID]["points"][key][adjustmentModeString]+tonumber(amount)
+						
+						players[playerID].adjustments[#players[playerID].adjustments + 1] = {event_id = tostring(self.dkpEventId), reason = reason, timestamp = os.time(), value = amount}
+
+					end
+				end
+
 			end
-			insertTable = {reason=reason, dkp=amount}
-			table.insert(dkpr.players[playerName], insertTable)
-		--	dkpr.players[playerName][1] = {reason=reason, dkp=amount}
-		--	dkpr.players[playerName] = {["index"]=1}
-		--	dkpr.players[playerName][1] = {reason=reason, dkp=amount}
-					
+	end
+
 		self:DestroyItemList()
 		self:PopulateItemList()
 		self:SearchForItems(playerName)
 		self.wndItems:FindChild("fld_add_amount"):SetText("")
 		self.wndItems:FindChild("fld_add_reason"):SetText("")
 
-		end
-	end
+		--end
+	--end
 end
 
 function DKP_Manager:OnDKPRemove(wndHandler, wndControl)
@@ -1102,7 +1145,8 @@ function DKP_Manager:OnLootAssigned(item, player)
 		if lstitem:FindChild("PlayerName"):GetText() == player then
 			for key,val in pairs(players) do
 				if players[key].name == player then
-					self:BnWAssigned(item, player, lstitem:FindChild("DKPName"):GetText())
+					local value = lstitem:FindChild("DKPName"):GetText()
+					self:BnWAssigned(item, player, value)
 					players[key].items[#players[key].items + 1] = {game_id = tostring(item:GetItemId()), itempool_id = tostring(self.dkpItemPoolID), name = item:GetName(), value = lstitem:FindChild("DKPName"):GetText()}
 					ChatSystemLib.Command(self:GetDKPChat("BnW") .. " " .. item:GetChatLinkString() .. " assigned to " .. player .. " for " .. lstitem:FindChild("DKPName"):GetText() .. " DKP!")
 				end
