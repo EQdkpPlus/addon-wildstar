@@ -125,6 +125,7 @@ function DKP_Manager:OnDocLoaded()
 		self.wndReasonItemList = self.wndItems:FindChild("ReasonList")
 		
 		
+		
 	    self.wndMain:Show(false, true)
 		self.wndItems:Show(false,true)
 		self.wndBetAndWin:Show(false,true)
@@ -1163,8 +1164,7 @@ function DKP_Manager:OnDKPEventSelected( wndHandler, wndControl, eMouseButton, n
     -- change the old item's text color back to normal color
     local wndItemText
     if self.wndSelectedListItem  ~= nil then
-        wndItemText = self.wndSelectedListItem:FindChild("lbl_event"):GetText()
-
+     wndItemText = self.wndSelectedListItem:FindChild("lbl_event"):GetText()
       --  wndItemText:SetTextColor(kcrNormalText)
     end
     
@@ -1173,8 +1173,8 @@ function DKP_Manager:OnDKPEventSelected( wndHandler, wndControl, eMouseButton, n
 	wndItemText = self.wndSelectedListItem:FindChild("lbl_event"):GetText()
 	wndEventID = self.wndSelectedListItem:FindChild("lbl_id"):GetText()
    -- wndItemText:SetTextColor(kcrSelectedText)
-    
-    self.wndDKPItemList:FindChild("btnToogleDKPEvent"):FindChild("Label_EventDropDown_Name"):SetText(wndItemText)  
+ 
+    self.wndItems:FindChild("Label_EventDropDown_Name"):SetText(wndItemText)  
 	self.dkpEventId = wndEventID 
 	self.wndDKPEventList:Destroy()
     
