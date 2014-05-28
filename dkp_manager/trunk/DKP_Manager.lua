@@ -1146,7 +1146,14 @@ function DKP_Manager:OnLootAssigned(item, player)
 			for key,val in pairs(players) do
 				if players[key].name == player then
 					local value = lstitem:FindChild("DKPName"):GetText()
-					self:BnWAssigned(item, player, value)
+					local string_player = tostring(player)
+					local itemName = item:GetName()
+					local Rover = Apollo.GetAddon("Rover")
+					Rover:AddWatch("item", item)
+					Rover:AddWatch("player", player)
+					Rover:AddWatch("value", lstitem:FindChild("DKPName"):GetText())
+					Rover:AddWatch("itemname", tostring(item:GetName()))
+					DKP_Manager:BnWAssigned(tostring(itemName), string_player, value)
 					players[key].items[#players[key].items + 1] = {game_id = tostring(item:GetItemId()), itempool_id = tostring(self.dkpItemPoolID), name = item:GetName(), value = lstitem:FindChild("DKPName"):GetText()}
 					ChatSystemLib.Command(self:GetDKPChat("BnW") .. " " .. item:GetChatLinkString() .. " assigned to " .. player .. " for " .. lstitem:FindChild("DKPName"):GetText() .. " DKP!")
 				end
@@ -1156,9 +1163,9 @@ function DKP_Manager:OnLootAssigned(item, player)
 
 end
 
-function DKP_Manager:BnWAssigned(item, player, value)
+function DKP_Manager:BnWAssigned(assigned_item, assigned_player, value)
 
-self.BnWAssigned:FindChild("lbl_item_name"):SetText(tostring(item:GetName()))
+self.BnWAssigned:FindChild("lbl_item_name"):SetText(assigned_item)
 self.BnWAssigned:FindChild("BGImport"):FindChild("fldDKPValue"):SetText(value)
 
 self.BnWAssigned:Show(true)
