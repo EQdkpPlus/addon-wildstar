@@ -57,6 +57,7 @@ function DKP_Manager:new(o)
 	o.betItem = {}
 	o.reasonItem = {}
 	o.tDKPKt = {}
+	o.tDKPEvent = {}
 
     return o
 end
@@ -516,6 +517,20 @@ function DKP_Manager:PopulateDKPKtList()
 	self.wndDKPKtItemList:ArrangeChildrenVert()
 end
 
+function DKP_Manager:PopulateDKPEventList()
+	-- make sure the item list is empty to start with
+		self:DestroyDKPEventList()
+		if (multidkp_pools[self.dkpKtId].events == nil) then
+			return
+		else 
+		for key,val in pairs(multidkp_pools[self.dkpKtId].events) do
+			self:AddDKPEventItem(multidkp_pools[self.dkpKtId]["events"][key].id,multidkp_pools[self.dkpKtId]["events"][key].name)
+		end
+	end;
+	-- now all the item are added, call ArrangeChildrenVert to list out the list items vertically
+	self.wndDKPEventItemList:ArrangeChildrenVert()
+end
+
 
 -- clear the item list
 function DKP_Manager:DestroyItemList()
@@ -535,6 +550,16 @@ function DKP_Manager:DestroyDKPKtList()
 
 	-- clear the list item array
 	self.tDKPKt = {}
+	self.wndSelectedListItem = nil
+end
+
+function DKP_Manager:DestroyDKPEventList()
+	for key,val in pairs(self.tDKPKt) do
+		self.tDKPEvent[key]:Destroy()
+	end
+
+	-- clear the list item array
+	self.tDKPEvent = {}
 	self.wndSelectedListItem = nil
 end
 
@@ -618,6 +643,21 @@ function DKP_Manager:AddDKPKtItem(ktID,ktDesc)
 	local desc = wnd:FindChild("lbl_desc")
 	id:SetText(ktID)
 	desc:SetText(ktDesc)
+end
+
+function DKP_Manager:AddDKPEventItem(EventID,EventDesc)
+	-- load the window item for the list item
+	local wnd = Apollo.LoadForm(self.xmlDoc, "DKP_EventItems", self.wndDKPEventItemList, self)
+	
+	
+	-- keep track of the window item created
+	self.tDKPEvent[EventID] = wnd
+
+	-- give it a piece of data to refer to 
+	local id = wnd:FindChild("lbl_id")
+	local desc = wnd:FindChild("lbl_event")
+	id:SetText(EventID)
+	desc:SetText(EventDesc)
 end
 
 -- add an item into the item list
@@ -1028,6 +1068,23 @@ if multidkp_pools ~= nil then
 end
 end
 
+function DKP_Manager:OnDKPEventToogle( wndHandler, wndControl, eMouseButton )
+if multidkp_pools ~= nil then
+	if self.wndDKPEventList ~= nil then
+		self.wndDKPEventList:Destroy()
+
+	end
+	self.wndDKPEventList = Apollo.LoadForm(self.xmlDoc, "DKP_Events", wndControl, self)
+	self.wndDKPEventItemList = self.wndDKPEventList:FindChild("EventList")
+	self.wndDKPEventList:SetData(wndControl)
+	self.wndDKPEventList:SetAnchorPoints(0,1,1,0)
+	self.wndDKPEventList:SetAnchorOffsets(0, -100, -15, 165)		
+
+	self:PopulateDKPEventList()
+	self.wndDKPEventList:Invoke()
+end
+end
+
 function DKP_Manager:OpenImportWindow( wndHandler, wndControl, eMouseButton )
 self.wndImport:Invoke()
 end
@@ -1095,6 +1152,35 @@ function DKP_Manager:OnStartAuction( betItem )
 	else
 		ChatSystemLib.PostOnChannel(ChatSystemLib.ChatChannel_System, "You dont have an Item selected!")
 	end
+end
+
+
+function DKP_Manager:OnDKPEventSelected( wndHandler, wndControl, eMouseButton, nLastRelativeMouseX, nLastRelativeMouseY )
+   if wndHandler ~= wndControl then
+        return
+    end
+    
+    -- change the old item's text color back to normal color
+    local wndItemText
+    if self.wndSelectedListItem  ~= nil then
+        wndItemText = self.wndSelectedListItem:FindChild("lbl_event"):GetText()
+
+      --  wndItemText:SetTextColor(kcrNormalText)
+    end
+    
+	-- wndControl is the item selected - change its color to selected
+	self.wndSelectedListItem = wndControl
+	wndItemText = self.wndSelectedListItem:FindChild("lbl_event"):GetText()
+	wndEventID = self.wndSelectedListItem:FindChild("lbl_id"):GetText()
+   -- wndItemText:SetTextColor(kcrSelectedText)
+    
+    self.wndDKPItemList:FindChild("btnToogleDKPEvent"):FindChild("Label_EventDropDown_Name"):SetText(wndItemText)  
+	self.dkpEventId = wndEventID 
+	self.wndDKPEventList:Destroy()
+    
+		--self:SearchForItems(self.wndSelectedListItem:GetData())
+		--self.wndItems:Invoke()
+	
 end
 
 -----------------------------------------------------------------------------------------------
