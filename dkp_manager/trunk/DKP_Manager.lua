@@ -312,6 +312,7 @@ function DKP_Manager:RefreshSettings()
                 self.wndSettingsList:FindChild("Window_GeneralSettings"):FindChild("btn_DKPSettings_EnableTwinkMode"):Enable(false)
                 self.wndSettingsList:FindChild("CheckReplacement"):Show(true)
         else
+				self.wndSettingsList:FindChild("Window_GeneralSettings"):FindChild("btn_DKPSettings_EnableTwinkMode"):Enable(false)
                 self.wndSettingsList:FindChild("CheckReplacement"):Show(false)
         end
         self.wndSettings:FindChild("btn_DKPSettings_ChatInstance"):SetCheck(self.DKPChatChannelInstance)
@@ -965,6 +966,7 @@ function DKP_Manager:OnImportData()
 				self.isTwinkMode = false
 			end
 	end
+	self:RefreshSettings()
 	end
 
 end
