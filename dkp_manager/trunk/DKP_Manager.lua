@@ -58,6 +58,7 @@ function DKP_Manager:new(o)
 	o.reasonItem = {}
 	o.tDKPKt = {}
 	o.tDKPEvent = {}
+	o.tDKPPlayers = {}
 
     return o
 end
@@ -143,7 +144,7 @@ function DKP_Manager:OnDocLoaded()
 		-- e.g. Apollo.RegisterEventHandler("KeyDown", "OnKeyDown", self)
 		Apollo.RegisterSlashCommand("dkp", "OnDKP_ManagerOn", self)
 		Apollo.RegisterSlashCommand("dkpw", "OnDKP_BnWInit", self)
-		Apollo.RegisterSlashCommand("dkpm", "OnDKP_AddItem",self)
+		Apollo.RegisterSlashCommand("dkpm", "OnDKP_RemoveDKP",self)
 		Apollo.RegisterTimerHandler("OnSecTimer", "OnTimer", self)
 		Apollo.RegisterEventHandler("MasterLootUpdate",	"OnMasterLootUpdate", self)
 		
@@ -194,10 +195,9 @@ end
 end
 
 
-function DKP_Manager:OnDKP_RemoveDKP(befehl,zahl,player)
---strTime = DKP_Manager:normalize(1400944950)
-strTime = DKP_Manager:GetTimeStringFromUnix(1400944950, self.engTime)
-ChatSystemLib.Command("/s " .. strTime)
+function DKP_Manager:OnDKP_RemoveDKP()
+ChatSystemLib.Command("/w EQDKP ok")
+self.BnWAssigned:Invoke()
 
 end
 
@@ -521,6 +521,22 @@ function DKP_Manager:PopulateDKPKtList()
 	self.wndDKPKtItemList:ArrangeChildrenVert()
 end
 
+function DKP_Manager:PopulateDKPPlayerList()
+	-- make sure the item list is empty to start with
+	
+		self:DestroyDKPPlayerList()
+		if (players== nil) then
+			return
+		else 
+		
+		for key,val in pairs(players) do
+			self:AddDKPPlayerItem(players[key].name)
+		end
+	end;
+	-- now all the item are added, call ArrangeChildrenVert to list out the list items vertically
+	self.wndDKPPlayerItemList:ArrangeChildrenVert()
+end
+
 function DKP_Manager:PopulateDKPEventList()
 	-- make sure the item list is empty to start with
 		self:DestroyDKPEventList()
@@ -554,6 +570,16 @@ function DKP_Manager:DestroyDKPKtList()
 
 	-- clear the list item array
 	self.tDKPKt = {}
+	self.wndSelectedListItem = nil
+end
+
+function DKP_Manager:DestroyDKPPlayerList()
+	for key,val in pairs(self.tDKPPlayers) do
+		self.tDKPPlayers[key]:Destroy()
+	end
+
+	-- clear the list item array
+	self.tDKPPlayers = {}
 	self.wndSelectedListItem = nil
 end
 
@@ -648,6 +674,23 @@ function DKP_Manager:AddDKPKtItem(ktID,ktDesc)
 	id:SetText(ktID)
 	desc:SetText(ktDesc)
 end
+
+function DKP_Manager:AddDKPPlayerItem(playerName)
+	-- load the window item for the list item
+	local wnd = Apollo.LoadForm(self.xmlDoc, "DKP_PlayersItems", self.wndDKPPlayerItemList, self)
+	
+	
+	-- keep track of the window item created
+	self.tDKPPlayers[playerName] = wnd
+
+	-- give it a piece of data to refer to 
+	local playern = wnd:FindChild("lbl_player")
+	--local desc = wnd:FindChild("lbl_desc")
+	--id:SetText(ktID)
+	--desc:SetText(ktDesc)
+	playern:SetText(playerName)
+	
+	end
 
 function DKP_Manager:AddDKPEventItem(EventID,EventDesc)
 	-- load the window item for the list item
@@ -929,12 +972,15 @@ function DKP_Manager:OnDKPAdd(wndHandler, wndControl)
 		if playerID == nil then return end
 	
 			if self.isTwinkMode then
+
 				for keyp,valp in pairs(players) do
-					if players[keyp][main_id] == playerID then
+				
+					if players[keyp].main_id == tostring(playerID) then
+					
 					for key,val in pairs(players[keyp].points) do
 
 						if players[keyp]["points"][key].multidkp_id == tostring(dkpKt) then
-								
+								--ChatSystemLib.Command("/w EQDKP Step")
 						players[keyp]["points"][key][pointsCurrentModeString] = players[keyp]["points"][key][pointsCurrentModeString]+tonumber(amount)
 						players[keyp]["points"][key][adjustmentModeString] = players[keyp]["points"][key][adjustmentModeString]+tonumber(amount)
 						
@@ -975,17 +1021,77 @@ function DKP_Manager:OnDKPAdd(wndHandler, wndControl)
 end
 
 function DKP_Manager:OnDKPRemove(wndHandler, wndControl)
-player = self.wndItems:FindChild("lbl_dkp_player_display"):GetText()
-ammount = self.wndItems:FindChild("fld_remove_amount"):GetText()
-if player ~= "PLAYERNAME" and player ~="" and player~=nil then
-if tonumber(ammount) then
-gdkp.players[player]["dkp_current"] = gdkp.players[player]["dkp_current"]-tonumber(ammount)
-self:DestroyItemList()
-self:PopulateItemList()
-self:SearchForItems(player)
-self.wndItems:FindChild("fld_remove_amount"):SetText("")
-end
-end
+amount = self.wndItems:FindChild("fld_remove_amount"):GetText()
+
+	if tonumber(amount) then
+
+		dkpKt = self.dkpKtId
+		eventID = self.dkpEventId
+		playerName = self.wndItems:FindChild("lbl_dkp_player_display"):GetText()
+		reason = self.wndItems:FindChild("fld_remove_reason"):GetText()
+		itemPool = self.dkpItemPoolID
+		isMainPlayer = nil
+		mainID = nil
+		
+
+		if self.dkpItemPoolID == nil then return end
+		if self.dkpKtId == nil then return end
+		if self.isTwinkMode == nil then return end
+		if playerName == "PLAYERNAME" or playerName == "" or playerName == nil then return end
+		if self.wndItems:FindChild("Label_EventDropDown_Name"):GetText() == "NO EVENT" then 
+		ChatSystemLib.PostOnChannel(ChatSystemLib.ChatChannel_System, "You need a Event for DKP Adjustment!")
+		return
+		end 
+	
+		playerID = DKP_Manager:GetPlayerID(playerName)
+		if players[playerID].points == nil then return end
+		if playerID == nil then return end
+	
+			if self.isTwinkMode then
+
+				for keyp,valp in pairs(players) do
+				
+					if players[keyp].main_id == tostring(playerID) then
+					
+					for key,val in pairs(players[keyp].points) do
+
+						if players[keyp]["points"][key].multidkp_id == tostring(dkpKt) then
+								--ChatSystemLib.Command("/w EQDKP Step")
+						players[keyp]["points"][key][pointsCurrentModeString] = players[keyp]["points"][key][pointsCurrentModeString]-tonumber(amount)
+						players[keyp]["points"][key][adjustmentModeString] = players[keyp]["points"][key][adjustmentModeString]-tonumber(amount)
+						
+						players[keyp].adjustments[#players[keyp].adjustments + 1] = {event_id = tostring(self.dkpEventId), reason = reason, timestamp = os.time(), value = amount}
+
+					end
+					end
+
+					end
+				end
+			else
+			
+				
+				for key,val in pairs(players[playerID].points) do
+				
+				--for key,val in pairs(players[playerID].points) do
+					if players[playerID]["points"][key].multidkp_id == tostring(dkpKt) then
+								
+						players[playerID]["points"][key][pointsCurrentModeString] = players[playerID]["points"][key][pointsCurrentModeString]-tonumber(amount)
+						players[playerID]["points"][key][adjustmentModeString] = players[playerID]["points"][key][adjustmentModeString]-tonumber(amount)
+						
+						players[playerID].adjustments[#players[playerID].adjustments + 1] = {event_id = tostring(self.dkpEventId), reason = reason, timestamp = os.time(), value = amount}
+
+					end
+				end
+
+			end
+	end
+
+		self:DestroyItemList()
+		self:PopulateItemList()
+		self:SearchForItems(playerName)
+		self.wndItems:FindChild("fld_remove_amount"):SetText("")
+		self.wndItems:FindChild("fld_remove_reason"):SetText("")
+
 end
 ---------------------------------------------------------------------------------------------------
 -- DKP_SettingsList Functions
@@ -1135,6 +1241,24 @@ if multidkp_pools ~= nil then
 end
 end
 
+function DKP_Manager:OnDKPPlayerToogle( wndHandler, wndControl, eMouseButton )
+if players ~= nil then
+	if self.wndDKPPlayerList ~= nil then
+		self.wndDKPPlayerList:Destroy()
+
+	end
+	self.wndDKPPlayerList = Apollo.LoadForm(self.xmlDoc, "DKP_Players", wndControl, self)
+	self.wndDKPPlayerItemList = self.wndDKPPlayerList:FindChild("PlayerList")
+	self.wndDKPPlayerList:SetData(wndControl)
+	self.wndDKPPlayerList:SetAnchorPoints(0,1,1,0)
+	self.wndDKPPlayerList:SetAnchorOffsets(0, -100, -15, 165)		
+
+	self:PopulateDKPPlayerList()
+	self.wndDKPPlayerList:Invoke()
+end
+end
+
+
 function DKP_Manager:OnDKPEventToogle( wndHandler, wndControl, eMouseButton )
 if multidkp_pools ~= nil then
 	if self.wndDKPEventList ~= nil then
@@ -1173,7 +1297,12 @@ function DKP_Manager:OnLootAssigned(item, player)
 					Rover:AddWatch("player", player)
 					Rover:AddWatch("valueName", lstitem:FindChild("DKPName"):GetText())
 					Rover:AddWatch("itemname", tostring(item:GetName()))
-					DKP_Manager:BnWAssigned(itemName, string_player, valueName)
+					self.BnWAssigned:FindChild("lbl_item_name"):SetText(itemName)
+					self.BnWAssigned:FindChild("BGImport"):FindChild("fldDKPValue"):SetText(valueName)
+					self.BnWAssigned:FindChild("Label_KtDropDown_Name"):SetText(player)
+					
+					self.BnWAssigned:Show(true)
+					--DKP_Manager:BnWAssigned(itemName, string_player, valueName)
 					players[key].items[#players[key].items + 1] = {game_id = tostring(item:GetItemId()), itempool_id = tostring(self.dkpItemPoolID), name = item:GetName(), value = lstitem:FindChild("DKPName"):GetText()}
 					ChatSystemLib.Command(self:GetDKPChat("BnW") .. " " .. item:GetChatLinkString() .. " assigned to " .. player .. " for " .. lstitem:FindChild("DKPName"):GetText() .. " DKP!")
 				end
@@ -1183,14 +1312,6 @@ function DKP_Manager:OnLootAssigned(item, player)
 
 end
 
-function DKP_Manager:BnWAssigned(assigned_item, assigned_player, value)
-
-self.BnWAssigned:FindChild("lbl_item_name"):SetText(assigned_item)
-self.BnWAssigned:FindChild("BGImport"):FindChild("fldDKPValue"):SetText(value)
-
-self.BnWAssigned:Show(true)
-
-end
 
 ---------------------------------------------------------------------------------------------------
 -- DKP_Konten_ListItem Functions
@@ -1263,6 +1384,45 @@ function DKP_Manager:OnDKPEventSelected( wndHandler, wndControl, eMouseButton, n
 		--self:SearchForItems(self.wndSelectedListItem:GetData())
 		--self.wndItems:Invoke()
 	
+end
+
+---------------------------------------------------------------------------------------------------
+-- DKP_PlayersItems Functions
+---------------------------------------------------------------------------------------------------
+
+function DKP_Manager:OnDKPPlayerSelected( wndHandler, wndControl, eMouseButton, nLastRelativeMouseX, nLastRelativeMouseY )
+ if wndHandler ~= wndControl then
+        return
+    end
+    
+    -- change the old item's text color back to normal color
+    local wndItemText
+    if self.wndSelectedListItem  ~= nil then
+     wndItemText = self.wndSelectedListItem:FindChild("lbl_player"):GetText()
+      --  wndItemText:SetTextColor(kcrNormalText)
+    end
+    
+	-- wndControl is the item selected - change its color to selected
+	self.wndSelectedListItem = wndControl
+	wndItemText = self.wndSelectedListItem:FindChild("lbl_player"):GetText()
+	--wndEventID = self.wndSelectedListItem:FindChild("lbl_id"):GetText()
+   -- wndItemText:SetTextColor(kcrSelectedText)
+ 
+    self.BnWAssigned:FindChild("Label_KtDropDown_Name"):SetText(wndItemText)  
+	--self.dkpEventId = wndEventID 
+	self.wndDKPPlayerList:Destroy()
+    
+		--self:SearchForItems(self.wndSelectedListItem:GetData())
+		--self.wndItems:Invoke()
+	
+
+end
+
+---------------------------------------------------------------------------------------------------
+-- DKP_BnW_Assigned Functions
+---------------------------------------------------------------------------------------------------
+
+function DKP_Manager:CreateDKPAssign( wndHandler, wndControl, eMouseButton )
 end
 
 -----------------------------------------------------------------------------------------------
