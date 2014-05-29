@@ -885,12 +885,17 @@ function DKP_Manager:OnImportData()
 	--JSON:decode(ImportData)
 	load_table = loadstring(ImportData)
 	if load_table == nil then
-	ImportData = self.wndImport:FindChild("BGImport"):FindChild("ImportData"):SetText("ERROR")
+		ImportData = self.wndImport:FindChild("BGImport"):FindChild("ImportData"):SetText("ERROR")
 	else
-	load_table()
-	self:DestroyItemList()
-	self:PopulateItemList()
-	ImportData = self.wndImport:FindChild("BGImport"):FindChild("ImportData"):SetText("SUCCSESS")
+		load_table()
+		self:DestroyItemList()
+		self:PopulateItemList()
+		ImportData = self.wndImport:FindChild("BGImport"):FindChild("ImportData"):SetText("SUCCSESS")
+			if info.with_twink == "1" then
+				self.isTwinkMode = true
+			else
+				self.isTwinkMode = false
+			end
 	end
 	end
 
@@ -906,6 +911,8 @@ function DKP_Manager:OnDKPAdd(wndHandler, wndControl)
 		playerName = self.wndItems:FindChild("lbl_dkp_player_display"):GetText()
 		reason = self.wndItems:FindChild("fld_add_reason"):GetText()
 		itemPool = self.dkpItemPoolID
+		isMainPlayer = nil
+		mainID = nil
 		
 
 		if self.dkpItemPoolID == nil then return end
@@ -922,8 +929,21 @@ function DKP_Manager:OnDKPAdd(wndHandler, wndControl)
 		if playerID == nil then return end
 	
 			if self.isTwinkMode then
-				for key,val in pairs(players) do
-					--if players[key]
+				for keyp,valp in pairs(players) do
+					if players[keyp][main_id] == playerID then
+					for key,val in pairs(players[keyp].points) do
+
+						if players[keyp]["points"][key].multidkp_id == tostring(dkpKt) then
+								
+						players[keyp]["points"][key][pointsCurrentModeString] = players[keyp]["points"][key][pointsCurrentModeString]+tonumber(amount)
+						players[keyp]["points"][key][adjustmentModeString] = players[keyp]["points"][key][adjustmentModeString]+tonumber(amount)
+						
+						players[keyp].adjustments[#players[keyp].adjustments + 1] = {event_id = tostring(self.dkpEventId), reason = reason, timestamp = os.time(), value = amount}
+
+					end
+					end
+
+					end
 				end
 			else
 			
