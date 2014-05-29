@@ -324,7 +324,7 @@ function DKP_Manager:RefreshSettings()
         self.wndSettings:FindChild("btn_BnWSettings_ChatInstance"):SetCheck(self.BnWChatChannelInstance)
         self.wndSettings:FindChild("btn_BnWSettings_ChatGroup"):SetCheck(self.BnWChatChannelGroup)
         self.wndSettings:FindChild("btn_BnWSettings_ChatGuild"):SetCheck(self.BnWChatChannelGuild)
-        if multidkp_pools ~= nil then
+        if multidkp_pools[self.dkpKtId] ~= nil then
         self.wndSettings:FindChild("Label_KtDropDown_Name"):SetText(multidkp_pools[tonumber(self.dkpKtId)].desc)
         end
         self.wndSettings:FindChild("btn_DKPSettings_EnableEngTime"):SetCheck(self.engTime)
@@ -552,11 +552,11 @@ end
 function DKP_Manager:PopulateDKPEventList()
 	-- make sure the item list is empty to start with
 		self:DestroyDKPEventList()
-		if (multidkp_pools[self.dkpKtId].events == nil) then
+		if (multidkp_pools[tonumber(self.dkpKtId)].events == nil) then
 			return
 		else 
-		for key,val in pairs(multidkp_pools[self.dkpKtId].events) do
-			self:AddDKPEventItem(multidkp_pools[self.dkpKtId]["events"][key].id,multidkp_pools[self.dkpKtId]["events"][key].name)
+		for key,val in pairs(multidkp_pools[tonumber(self.dkpKtId)].events) do
+			self:AddDKPEventItem(multidkp_pools[tonumber(self.dkpKtId)]["events"][key].id,multidkp_pools[tonumber(self.dkpKtId)]["events"][key].name)
 		end
 	end;
 	-- now all the item are added, call ArrangeChildrenVert to list out the list items vertically
@@ -596,6 +596,7 @@ function DKP_Manager:DestroyDKPPlayerList()
 end
 
 function DKP_Manager:DestroyDKPEventList()
+	if self.tDKPEvent == nil then return end
 	for key,val in pairs(self.tDKPKt) do
 		self.tDKPEvent[key]:Destroy()
 	end
