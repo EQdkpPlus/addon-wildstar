@@ -28,6 +28,7 @@ local dkpUserSettings = {
 "BnWChatChannelGroup",
 "dkpKtId",
 "dkpItemPoolID",
+"itemAssigned",
 "BnWChatChannelGuild"
 }
 
@@ -144,9 +145,13 @@ function DKP_Manager:OnDocLoaded()
 		-- e.g. Apollo.RegisterEventHandler("KeyDown", "OnKeyDown", self)
 		Apollo.RegisterSlashCommand("dkp", "OnDKP_ManagerOn", self)
 		Apollo.RegisterSlashCommand("dkpw", "OnDKP_BnWInit", self)
-		Apollo.RegisterSlashCommand("dkpm", "OnDKP_RemoveDKP",self)
+		--Apollo.RegisterSlashCommand("dkpm", "OnDKP_RemoveDKP",self)
 		Apollo.RegisterTimerHandler("OnSecTimer", "OnTimer", self)
 		Apollo.RegisterEventHandler("MasterLootUpdate",	"OnMasterLootUpdate", self)
+		Apollo.RegisterEventHandler("MasterLootUpdate", "OnMasterLootUpdate", self)
+        Apollo.RegisterEventHandler("MasterLootUpdate", "DelayTimer", self)
+        Apollo.RegisterTimerHandler("EventThresholdTimer", "MasterLootFormOpenCallback", self)
+        Apollo.CreateTimer("EventThresholdTimer", 0.01, false)
 		
 		
 		self:GetTwinkString()
@@ -283,6 +288,7 @@ function DKP_Manager:DefaultSettings()
 	self.isAllowWhisper = true;
 	self.engTime = true;
 	self.dkpItemPoolID = 1;
+	self.itemAssigned = nil;
 	tMasterLoot = {}
 	tMasterLootItemList = {}
 	tLooterItemList = {}
@@ -298,26 +304,32 @@ function DKP_Manager:DefaultSettings()
 end
 
 function DKP_Manager:RefreshSettings()
-	if self.DKPChatChannelSay ~= nil then
-	self:GetTwinkString()
-	self.wndSettings:FindChild("btn_DKPSettings_ChatSay"):SetCheck(self.DKPChatChannelSay)
-	self.wndSettings:FindChild("btn_DKPSettings_EnableTwinkMode"):SetCheck(self.isTwinkMode)
-	self.wndSettings:FindChild("btn_DKPSettings_ChatInstance"):SetCheck(self.DKPChatChannelInstance)
-	self.wndSettings:FindChild("btn_DKPSettings_ChatGroup"):SetCheck(self.DKPChatChannelGroup)
-	self.wndSettings:FindChild("btn_DKPSettings_ChatGuild"):SetCheck(self.DKPChatChannelGuild)
-	self.wndSettings:FindChild("btn_DKPSettings_EnableWhisper"):SetCheck(self.isAllowWhisper)
-	self.wndSettings:FindChild("Slider_DrawTimer"):SetValue(self.itemBetTime)
-	self.wndSettings:FindChild("Label_DrawTimerDisplay"):SetText(tostring(self.itemBetTime) .. "s")
-	self.wndSettings:FindChild("btn_BnWSettings_ChatSay"):SetCheck(self.BnWChatChannelSay)
-	self.wndSettings:FindChild("btn_BnWSettings_ChatInstance"):SetCheck(self.BnWChatChannelInstance)
-	self.wndSettings:FindChild("btn_BnWSettings_ChatGroup"):SetCheck(self.BnWChatChannelGroup)
-	self.wndSettings:FindChild("btn_BnWSettings_ChatGuild"):SetCheck(self.BnWChatChannelGuild)
-	if multidkp_pools ~= nil then
-	self.wndSettings:FindChild("Label_KtDropDown_Name"):SetText(multidkp_pools[tonumber(self.dkpKtId)].desc)
-	end
-	self.wndSettings:FindChild("btn_DKPSettings_EnableEngTime"):SetCheck(self.engTime)
-	end
-	
+        if self.DKPChatChannelSay ~= nil then
+        self:GetTwinkString()
+        self.wndSettings:FindChild("btn_DKPSettings_ChatSay"):SetCheck(self.DKPChatChannelSay)
+        self.wndSettings:FindChild("btn_DKPSettings_EnableTwinkMode"):SetCheck(self.isTwinkMode)
+        if self.isTwinkMode then
+                self.wndSettingsList:FindChild("Window_GeneralSettings"):FindChild("btn_DKPSettings_EnableTwinkMode"):Enable(false)
+                self.wndSettingsList:FindChild("CheckReplacement"):Show(true)
+        else
+                self.wndSettingsList:FindChild("CheckReplacement"):Show(false)
+        end
+        self.wndSettings:FindChild("btn_DKPSettings_ChatInstance"):SetCheck(self.DKPChatChannelInstance)
+        self.wndSettings:FindChild("btn_DKPSettings_ChatGroup"):SetCheck(self.DKPChatChannelGroup)
+        self.wndSettings:FindChild("btn_DKPSettings_ChatGuild"):SetCheck(self.DKPChatChannelGuild)
+        self.wndSettings:FindChild("btn_DKPSettings_EnableWhisper"):SetCheck(self.isAllowWhisper)
+        self.wndSettings:FindChild("Slider_DrawTimer"):SetValue(self.itemBetTime)
+        self.wndSettings:FindChild("Label_DrawTimerDisplay"):SetText(tostring(self.itemBetTime) .. "s")
+        self.wndSettings:FindChild("btn_BnWSettings_ChatSay"):SetCheck(self.BnWChatChannelSay)
+        self.wndSettings:FindChild("btn_BnWSettings_ChatInstance"):SetCheck(self.BnWChatChannelInstance)
+        self.wndSettings:FindChild("btn_BnWSettings_ChatGroup"):SetCheck(self.BnWChatChannelGroup)
+        self.wndSettings:FindChild("btn_BnWSettings_ChatGuild"):SetCheck(self.BnWChatChannelGuild)
+        if multidkp_pools ~= nil then
+        self.wndSettings:FindChild("Label_KtDropDown_Name"):SetText(multidkp_pools[tonumber(self.dkpKtId)].desc)
+        end
+        self.wndSettings:FindChild("btn_DKPSettings_EnableEngTime"):SetCheck(self.engTime)
+        end
+       
 end
 
 
@@ -844,6 +856,7 @@ end
 
 function DKP_Manager:OnMasterLootUpdate()
 
+self:DelayTimer()
 	local tMasterLoot = GameLib.GetMasterLoot()
 	local tMasterLootItemList = {}
 	local tLooterItemList = {}
@@ -884,6 +897,17 @@ for idx, tItem in ipairs (tLootItems) do
 end
 end
 
+function DKP_Manager:DelayTimer()
+       Apollo.StartTimer("EventThresholdTimer")
+end
+ 
+function DKP_Manager:MasterLootFormOpenCallback()
+        local wndImpSalv = Apollo.FindWindowByName("MasterLootWindow")
+        if wndImpSalv then
+               wndImpSalv:Show(false)
+                           --wndImpSalv:Destroy()
+        end
+end
 
 function DKP_Manager:PopulateLootItemList()
 	self.wndBetAndWinItemList:ArrangeChildrenVert()
@@ -1292,19 +1316,15 @@ function DKP_Manager:OnLootAssigned(item, player)
 					local valueName = lstitem:FindChild("DKPName"):GetText()
 					local string_player = tostring(player)
 					local itemName = tostring(item:GetName())
-					local Rover = Apollo.GetAddon("Rover")
-					Rover:AddWatch("item", item)
-					Rover:AddWatch("player", player)
-					Rover:AddWatch("valueName", lstitem:FindChild("DKPName"):GetText())
-					Rover:AddWatch("itemname", tostring(item:GetName()))
+					self.itemAssigned = item
 					self.BnWAssigned:FindChild("lbl_item_name"):SetText(itemName)
 					self.BnWAssigned:FindChild("BGImport"):FindChild("fldDKPValue"):SetText(valueName)
 					self.BnWAssigned:FindChild("Label_KtDropDown_Name"):SetText(player)
 					
 					self.BnWAssigned:Show(true)
 					--DKP_Manager:BnWAssigned(itemName, string_player, valueName)
-					players[key].items[#players[key].items + 1] = {game_id = tostring(item:GetItemId()), itempool_id = tostring(self.dkpItemPoolID), name = item:GetName(), value = lstitem:FindChild("DKPName"):GetText()}
-					ChatSystemLib.Command(self:GetDKPChat("BnW") .. " " .. item:GetChatLinkString() .. " assigned to " .. player .. " for " .. lstitem:FindChild("DKPName"):GetText() .. " DKP!")
+				--	players[key].items[#players[key].items + 1] = {game_id = tostring(item:GetItemId()), itempool_id = tostring(self.dkpItemPoolID), name = item:GetName(), value = lstitem:FindChild("DKPName"):GetText()}
+				--	ChatSystemLib.Command(self:GetDKPChat("BnW") .. " " .. item:GetChatLinkString() .. " assigned to " .. player .. " for " .. lstitem:FindChild("DKPName"):GetText() .. " DKP!")
 				end
 			end
 		end					
@@ -1423,6 +1443,59 @@ end
 ---------------------------------------------------------------------------------------------------
 
 function DKP_Manager:CreateDKPAssign( wndHandler, wndControl, eMouseButton )
+	
+	value = self.BnWAssigned:FindChild("BGImport"):FindChild("fldDKPValue"):GetText()
+	player = self.BnWAssigned:FindChild("Label_KtDropDown_Name"):GetText()
+	for key,val in pairs(players) do
+		if players[key].name == player then
+			players[key].items[#players[key].items + 1] = {game_id = tostring(self.itemAssigned:GetItemId()), itempool_id = tostring(self.dkpItemPoolID), name = self.itemAssigned:GetName(), value = value, timestamp = os.time()}
+				if tonumber(value) then
+
+					dkpKt = self.dkpKtId
+					eventID = self.dkpEventId
+					playerName = self.wndItems:FindChild("lbl_dkp_player_display"):GetText()
+					reason = self.wndItems:FindChild("fld_add_reason"):GetText()
+					itemPool = self.dkpItemPoolID
+					isMainPlayer = nil
+					mainID = nil
+		
+					if self.dkpItemPoolID == nil then return end
+					if self.dkpKtId == nil then return end
+					if self.isTwinkMode == nil then return end
+					if player == "PLAYERNAME" or player == "" or player == nil then return end
+					--ChatSystemLib.PostOnChannel(ChatSystemLib.ChatChannel_System, "You need a Event for DKP Adjustment!")
+					
+				
+	
+				playerID = DKP_Manager:GetPlayerID(player)
+				if playerID == nil then return end
+				if players[playerID].points == nil then return end
+				
+	
+				if self.isTwinkMode then
+
+					for keyp,valp in pairs(players) do
+						if players[keyp].main_id == tostring(playerID) then
+							for key,val in pairs(players[keyp].points) do
+								if players[keyp]["points"][key].multidkp_id == tostring(self.dkpKtId) then
+									players[keyp]["points"][key][pointsCurrentModeString] = players[keyp]["points"][key][pointsCurrentModeString]-tonumber(value)												
+								end
+							end
+
+						end
+					end
+				else
+					for key,val in pairs(players[playerID].points) do			
+						if players[playerID]["points"][key].multidkp_id == tostring(dkpKt) then				
+							players[playerID]["points"][key][pointsCurrentModeString] = players[playerID]["points"][key][pointsCurrentModeString]-tonumber(value)
+						end
+					end
+				end
+				end 
+		end
+	end
+	ChatSystemLib.Command(self:GetDKPChat("BnW") .. " " .. self.itemAssigned:GetChatLinkString() .. " assigned to " .. player .. " for " .. value .. " DKP!")
+	self.BnWAssigned:Close()
 end
 
 -----------------------------------------------------------------------------------------------
