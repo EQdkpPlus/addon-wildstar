@@ -16,6 +16,7 @@ local isWinTime = false
 itemWeBetFor = "<TESTITEM>"
 local dkpUserSettings = {
 "itemBetTime",
+"openBid",
 "isAllowWhisper",
 "isTwinkMode",
 "engTime",
@@ -242,7 +243,9 @@ function DKP_Manager:OnSave(eType)
 	if eType ~= GameLib.CodeEnumAddonSaveLevel.Character then return end
 
 	local tSave = {}
-	for idx,property in ipairs(dkpUserSettings) do tSave[property] = self[property] end
+	for idx,property in ipairs(dkpUserSettings) do 
+	tSave[property] = self[property] 
+	end
 	tSave["eqdkp"] = eqdkp
 	tSave["game"] = game
 	tSave["info"] = info
@@ -275,6 +278,7 @@ end
 
 function DKP_Manager:DefaultSettings()
 	self.itemBetTime = 10;
+	self.openBid = false;
 	self.dkpKtId = 1;
 	self.isTwinkMode = false;
 	self.DKPChatChannelSay = true;
@@ -315,6 +319,7 @@ function DKP_Manager:RefreshSettings()
 				self.wndSettingsList:FindChild("Window_GeneralSettings"):FindChild("btn_DKPSettings_EnableTwinkMode"):Enable(false)
                 self.wndSettingsList:FindChild("CheckReplacement"):Show(false)
         end
+		self.wndSettings:FindChild("btn_DKPSettings_OpenBid"):SetCheck(self.openBid)
         self.wndSettings:FindChild("btn_DKPSettings_ChatInstance"):SetCheck(self.DKPChatChannelInstance)
         self.wndSettings:FindChild("btn_DKPSettings_ChatGroup"):SetCheck(self.DKPChatChannelGroup)
         self.wndSettings:FindChild("btn_DKPSettings_ChatGuild"):SetCheck(self.DKPChatChannelGuild)
@@ -325,7 +330,7 @@ function DKP_Manager:RefreshSettings()
         self.wndSettings:FindChild("btn_BnWSettings_ChatInstance"):SetCheck(self.BnWChatChannelInstance)
         self.wndSettings:FindChild("btn_BnWSettings_ChatGroup"):SetCheck(self.BnWChatChannelGroup)
         self.wndSettings:FindChild("btn_BnWSettings_ChatGuild"):SetCheck(self.BnWChatChannelGuild)
-        if multidkp_pools[self.dkpKtId] ~= nil then
+        if multidkp_pools[tonumber(self.dkpKtId)] ~= nil then
         self.wndSettings:FindChild("Label_KtDropDown_Name"):SetText(multidkp_pools[tonumber(self.dkpKtId)].desc)
         end
         self.wndSettings:FindChild("btn_DKPSettings_EnableEngTime"):SetCheck(self.engTime)
@@ -404,7 +409,9 @@ elseif tonumber(strMessage) then
 			self:AddListBidder(strSender, strMessage)
 			self.wndBetAndWinList:ArrangeChildrenVert()
 		--end
-	
+	if self.openBid == true then
+	ChatSystemLib.Command(self:GetDKPChat("BnW") .. " Bet from " .. tMessage.strSender .. ": " .. strMessage)
+	end
 	ChatSystemLib.Command("/w " .. strCompleteName .. " You bet " ..strMessage.. " on " ..itemWeBetFor:GetChatLinkString().. "! ")
 	end
 end
@@ -512,12 +519,25 @@ function DKP_Manager:PopulateItemList()
 		if (players == nil) then
 			return
 		else 
+		
 		for key,val in pairs(players) do
 			self:AddItem(players[key].name,players[key].class_name,players[key]["points"][tonumber(self.dkpKtId)][pointsCurrentModeString])
 		end
 	end;
 	-- now all the item are added, call ArrangeChildrenVert to list out the list items vertically
 	self.wndItemList:ArrangeChildrenVert()
+end
+
+function DKP_Manager:SetDKPKTId()
+for key,val in pairs(multidkp_pools) do
+	if multidkp_pools[key] == nil then
+	
+	else
+	ChatSystemLib.Command("/w Whiskey " .. tostring(key))
+	self.dkpKtId = tostring(key)
+	return
+	end
+end
 end
 
 function DKP_Manager:PopulateDKPKtList()
@@ -598,8 +618,13 @@ end
 
 function DKP_Manager:DestroyDKPEventList()
 	if self.tDKPEvent == nil then return end
+	if self.tDKPKt == nil then return end
+
 	for key,val in pairs(self.tDKPKt) do
+	if self.tDKPEvent[key] == nil then
+	else
 		self.tDKPEvent[key]:Destroy()
+		end
 	end
 
 	-- clear the list item array
@@ -789,6 +814,10 @@ end
 
 -- when a list item is selected
 function DKP_Manager:OnListItemCharacterSelected(wndHandler, wndControl)
+if self.wndDKPEventItemList ~= nil then
+return
+end
+
     -- make sure the wndControl is valid
     if wndHandler ~= wndControl then
         return
@@ -911,6 +940,14 @@ function DKP_Manager:MasterLootFormOpenCallback()
         end
 end
 
+function DKP_Manager:MasterLootFormOpen()
+        local wndImpSalv = Apollo.FindWindowByName("MasterLootWindow")
+        if wndImpSalv then
+               wndImpSalv:Show(true)
+                           --wndImpSalv:Destroy()
+        end
+end
+
 function DKP_Manager:PopulateLootItemList()
 	self.wndBetAndWinItemList:ArrangeChildrenVert()
 end
@@ -957,6 +994,7 @@ function DKP_Manager:OnImportData()
 		ImportData = self.wndImport:FindChild("BGImport"):FindChild("ImportData"):SetText("ERROR")
 	else
 		load_table()
+		self:SetDKPKTId()
 		self:DestroyItemList()
 		self:PopulateItemList()
 		ImportData = self.wndImport:FindChild("BGImport"):FindChild("ImportData"):SetText("SUCCSESS")
@@ -970,6 +1008,8 @@ function DKP_Manager:OnImportData()
 	end
 
 end
+
+
 
 function DKP_Manager:OnDKPAdd(wndHandler, wndControl)
 			amount = self.wndItems:FindChild("fld_add_amount"):GetText()
@@ -1220,6 +1260,9 @@ end
 
 
 
+function DKP_Manager:Button_EnableOpenBid( wndHandler, wndControl, eMouseButton )
+self.openBid = wndControl:IsChecked()
+end
 
 function DKP_Manager:Button_EnableDKPWhisper( wndHandler, wndControl)
 self.isAllowWhisper = wndControl:IsChecked()
@@ -1336,6 +1379,8 @@ function DKP_Manager:OnLootAssigned(item, player)
 end
 
 
+
+
 ---------------------------------------------------------------------------------------------------
 -- DKP_Konten_ListItem Functions
 ---------------------------------------------------------------------------------------------------
@@ -1362,6 +1407,11 @@ function DKP_Manager:OnDKPKtSelected( wndHandler, wndControl, eMouseButton, nLas
     self.wndSettingsList:FindChild("Label_KtDropDown_Name"):SetText(wndItemText)  
 	self.dkpKtId = wndKtID 
 	self.wndDKPKtList:Destroy()
+	
+	if self.wndDKPEventList ~= nil then
+		self.wndDKPEventList:Destroy()
+		self:PopulateDKPEventList()
+	end
     
 		--self:SearchForItems(self.wndSelectedListItem:GetData())
 		--self.wndItems:Invoke()
@@ -1402,11 +1452,22 @@ function DKP_Manager:OnDKPEventSelected( wndHandler, wndControl, eMouseButton, n
  
     self.wndItems:FindChild("Label_EventDropDown_Name"):SetText(wndItemText)  
 	self.dkpEventId = wndEventID 
+	self.wndDKPEventItemList:Destroy()
 	self.wndDKPEventList:Destroy()
+	ApolloTimer.Create(0.4, true, "WaitForClick", self)
+
+	
+
+	return
+	
     
 		--self:SearchForItems(self.wndSelectedListItem:GetData())
 		--self.wndItems:Invoke()
 	
+end
+
+function DKP_Manager:WaitForClick()
+self.wndDKPEventItemList = nil
 end
 
 ---------------------------------------------------------------------------------------------------
